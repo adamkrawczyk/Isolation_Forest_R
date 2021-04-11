@@ -7,3 +7,4 @@ ifr <- IsolationForest$new()
 ifr$getiForest()
 ifr$getiTrees()
 ifr$getScores()
+# just to check 
