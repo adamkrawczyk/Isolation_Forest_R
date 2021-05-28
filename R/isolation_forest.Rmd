@@ -10,23 +10,57 @@ output: html_notebook
 ## Struktura katalogów w projekcie przedstawia się nastepująco:
 * **data** - katalog przechowyjący dane wejściowy
 * **info** - katalog przechowujący sprawozdanie porjektu
-* **src**  - katalok przechowujący implementacji poszczególnych algorytmów
+* **src**  - katalog przechowujący kod żrodłowy
 * **isolation_forest.Rmd** - główny plik (notatnik) zawierajcy kod źródłowy
 * **isolation_forest.html** - plik wynikowy generowany na podstawie isolation_forest.Rmd
 
 ## Wymagane biblioteki na potrzeby projektu
 
 * **ggplot2** - biblioteka udostępnająca narzedzia do tworzenia grafiki, opartym na The Grammar of Graphics.
-* **solitude** - biblioteka, udostępnająca narzędzia do implementacji Isolation forest, operta na pracy: *"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
+* **solitude** - biblioteka udostępnająca narzędzia do implementacji Isolation forest, operta na pracy:
+* **R.matlab** - biblioteka dla wczytywania plików o formacie .mat
+*"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
 ```{r}
 library(ggplot2)
 library(solitude)
-source("IsolationForest.R") 
+library(R.matlab)
+source("src/IsolationForest.R") 
 ```
 
+### Przygotowanie danych
 
+* load_mat_data - wczytuje dane z pliku o formacie .mat do ??? nie wiem jeszcze co to jest ???
+* load_data - wczytuje dane z pliku do tabeli (data frame-u)
 
 ```{r}
+load_mat_data <- function(path) {
+  return(readMat(path))
+}
+
+load_data <- function(path) {
+  return(read.table(path, sep = ",", header = TRUE))
+}
+
+prepare_data <- function(df) {
+  # [TODO] Change col names or filter some data 
+}
+```
+
+### Wczytywanie danych
+
+* kddcup.data_10_percent_corrected - Zbiór danych obejmuje szeroką gamę ???włamań??? symulowanych w wojskowym środowisku sieciowym. [link](http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html)
+* satellite.mat - [link](http://odds.cs.stonybrook.edu/satellite-dataset/)
+  Description: X = Multi-dimensional point data, y = labels (1 = outliers, 0 = inliers)
+* ... <- tutaj trzeba wskazać dane na których to testujemy, wybrałem tylko w ramach testowania
+
+Wczytywania danych dla tabeli *satellite.mat*
+
+```{r}
+
+satallite_data <- load_mat_data("data/satellite.mat")
+#satallite_data_df <- data.frame(X = satallite_data$X, Y = satallite_data$Y)
+kkdcup_data <- load_data("data/kddcup.data_10_percent_corrected")
+head(kkdcup_data)
 
 ```
 
