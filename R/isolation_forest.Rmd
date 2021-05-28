@@ -48,6 +48,8 @@ prepare_data <- function(df) {
 
 ### Wczytywanie danych
 
+Dane wzięty ze strony [Outlier Detection DataSets (ODDS)](http://odds.cs.stonybrook.edu/)
+
 * kddcup.data_10_percent_corrected - Zbiór danych obejmuje szeroką gamę ???włamań??? symulowanych w wojskowym środowisku sieciowym. [link](http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html)
 * satellite.mat - [link](http://odds.cs.stonybrook.edu/satellite-dataset/)
   Description: X = Multi-dimensional point data, y = labels (1 = outliers, 0 = inliers)
@@ -64,3 +66,4 @@ head(kkdcup_data)
 
 ```
 
+### 
