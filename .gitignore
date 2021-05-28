@@ -1,0 +1,7 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# dodałem to na razie ponieważ dane zajmują dużo miejsca
+R/data/* 

@@ -1,0 +1,32 @@
+---
+title: "ZUM Projekt"
+autor: Zhan Banzekulivakha. Adam Krawczyk
+last update date: "28 05 2021"
+output: html_notebook
+---
+## Opis projektu
+**Temat projektu:** Nienadzorowana detekcja anomalii za lasu izolacyjnego. Funkcje do tworzenia modelu i predykcji. Porównanie z nadzorowaną detekcją anomalii za pomocą dostępnych w R algorytmów klasyfikacji.
+
+## Struktura katalogów w projekcie przedstawia się nastepująco:
+* **data** - katalog przechowyjący dane wejściowy
+* **info** - katalog przechowujący sprawozdanie porjektu
+* **src**  - katalok przechowujący implementacji poszczególnych algorytmów
+* **isolation_forest.Rmd** - główny plik (notatnik) zawierajcy kod źródłowy
+* **isolation_forest.html** - plik wynikowy generowany na podstawie isolation_forest.Rmd
+
+## Wymagane biblioteki na potrzeby projektu
+
+* **ggplot2** - biblioteka udostępnająca narzedzia do tworzenia grafiki, opartym na The Grammar of Graphics.
+* **solitude** - biblioteka, udostępnająca narzędzia do implementacji Isolation forest, operta na pracy: *"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
+```{r}
+library(ggplot2)
+library(solitude)
+source("IsolationForest.R") 
+```
+
+
+
+```{r}
+
+```
+
