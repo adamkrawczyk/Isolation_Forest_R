@@ -20,7 +20,7 @@ output: html_notebook
 * **solitude** - biblioteka udostępnająca narzędzia do implementacji Isolation forest, operta na pracy:
 * **R.matlab** - biblioteka dla wczytywania plików o formacie .mat
 *"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(ggplot2)
 library(solitude)
 library(R.matlab)
@@ -30,7 +30,7 @@ source("src/IsolationForest.R")
 ### Przygotowanie danych
 
 * load_mat_data - wczytuje dane z pliku o formacie .mat do ??? nie wiem jeszcze co to jest ???
-* load_data - wczytuje dane z pliku do tabeli (data frame-u)
+* load_data - wczytuje dane z pliku do tabeli (data frame-u) w formacie innych niż *.mat
 
 ```{r}
 load_mat_data <- function(path) {
@@ -44,27 +44,81 @@ load_data <- function(path) {
 prepare_data <- function(df) {
   # [TODO] Change col names or filter some data 
 }
+
+print_mat_data_info <- function(data) {
+  arrhytmia_dim <- dim(arrhythmia_data$X)
+  print(paste("Rozmiar X: N=", dim(arrhythmia_data$X)[1], ", M=", dim(arrhythmia_data$X)[2], sep=""))
+  print(paste("Rozmiar Y:", dim(arrhythmia_data$y)[1]))
+}
 ```
 
 ### Wczytywanie danych
 
-Dane wzięty ze strony [Outlier Detection DataSets (ODDS)](http://odds.cs.stonybrook.edu/)
+Dane wzięty ze strony [Outlier Detection DataSets (ODDS)](http://odds.cs.stonybrook.edu/) oraz [Kaggle](https://www.kaggle.com/)
 
-* Credit Card Fraud Detection (Kaggle) [link](https://www.kaggle.com/mlg-ulb/creditcardfraud)
-* Arrhythmia dataset (ODDS) [link](http://odds.cs.stonybrook.edu/arrhythmia-dataset/)
-* http (KDDCUP99) dataset (ODDS) [link](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/)
-* kddcup.data_10_percent_corrected - Zbiór danych obejmuje szeroką gamę ???włamań??? symulowanych w wojskowym środowisku sieciowym. [link](http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html)
+1. Credit Card Fraud Detection (Kaggle) [link](https://www.kaggle.com/mlg-ulb/creditcardfraud)
+2. Arrhythmia dataset (ODDS) [link](http://odds.cs.stonybrook.edu/arrhythmia-dataset/)
+3. http (KDDCUP99) dataset (ODDS) [link](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/)
+4. [Temporary] kddcup.data_10_percent_corrected - Zbiór danych obejmuje szeroką gamę ???włamań??? symulowanych w wojskowym środowisku sieciowym. [link](http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html)
 
-Wczytywania danych dla tabeli *satellite.mat*
+#### Wczytywania danych z pliku arrhythmia.mat:
+
+**Opis danych**:
+Dane składają się z dwóch tabel X i Y:
+
+* X - to wielowymiarowe dane punktowe rozmiaru **N x M**, gdzie N - to liczba punkt, a M - to liczba cech.
+* Y - to zbior etykiety o rozmiarze N (liczby punktów), oznaczajczy czy dany punkt jest wartością odstającą (1 = outliers, 0 = inliers) 
 
 ```{r}
-
-satallite_data <- load_mat_data("data/satellite.mat")
-#satallite_data_df <- data.frame(X = satallite_data$X, Y = satallite_data$Y)
-kkdcup_data <- load_data("data/kddcup.data_10_percent_corrected")
-head(kkdcup_data)
-
+arrhythmia_data <- load_mat_data("data/arrhythmia.mat")
+print_mat_data_info(arrhythmia_data)
 ```
+
+#### Wczytywania danych z pliku http.mat:
+
+**Opis danych**:
+Dane składają się z dwóch tabel X i Y:
+
+* X - to wielowymiarowe dane punktowe rozmiaru **N x M**, gdzie N - to liczba punkt, a M - to liczba cech.
+* Y - to zbior etykiety o rozmiarze N (liczby punktów), oznaczajczy czy dany punkt jest wartością odstającą (1 = outliers, 0 = inliers) 
+
+```{r}
+# [TODO] problem with open http.mat:
+#   Error in readMat5(con, firstFourBytes = firstFourBytes, maxLength = maxLength) : 
+#   Reading of MAT v7.3 files is not supported. If possible, save the data in MATLAB using 'save -V6'.
+
+# Uncomment these lines  when the problem is resolved.
+# http_data <- load_mat_data("data/http.mat")
+# print_mat_data_info(http_data)
+```
+
+
+## Wczytywania danych z pliku creditcard.csv:
+
+**Opis danych**:
+Zbiór danych zawiera transakcje dokonane kartami kredytowymi we wrześniu 2013 r. przez europejskich posiadaczy kart.
+Ten zbiór danych przedstawia transakcje, które miały miejsce w ciągu dwóch dni, w których mamy **492 oszustw** z 284 807 transakcji.
+
+Dane przedstawione za pomocą tabeli o rozmiarze **N x M** gdzie:
+
+* N - ilość transakcyj
+* M - liczba cech, których jest 31
+
+Cechy:
+1. Ze względu na to, że oryganalnych danych nie można udostępnić, ze względu zabiezpieczęnie danych użytkownika, to mama doczynienia z danymi, które są wynikem redukcji wymiarowości za pomocą PCA (angl. *Principal Component Analysis*).Te cechy w tabele przedstawione jako V1, V2, V3, ... , V28.
+2. Time - zawiera liczba sekund która upłynęła między każdą transakcją a pierwszą transakcją w zbiorze danych.
+3. Amount - to kwota transakcji.
+4. class - przejmuję wartość 1 gdy transakcja jest oszustwej (outliers) i 0 w przeciwnym przypadku.
+
+
+```{r}
+creditcard_data <- load_data("data/creditcard.csv")
+head(creditcard_data)
+```
+```{r}
+dim(creditcard_data)
+```
+
 
 ### **ETAP 1** Sprawdzenie działania algorytmu na sztucznym zbiorze danych oraz publiczne dostępnych zbiorach
 
