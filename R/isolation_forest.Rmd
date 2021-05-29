@@ -50,10 +50,10 @@ prepare_data <- function(df) {
 
 Dane wzięty ze strony [Outlier Detection DataSets (ODDS)](http://odds.cs.stonybrook.edu/)
 
+* Credit Card Fraud Detection (Kaggle) [link](https://www.kaggle.com/mlg-ulb/creditcardfraud)
+* Arrhythmia dataset (ODDS) [link](http://odds.cs.stonybrook.edu/arrhythmia-dataset/)
+* http (KDDCUP99) dataset (ODDS) [link](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/)
 * kddcup.data_10_percent_corrected - Zbiór danych obejmuje szeroką gamę ???włamań??? symulowanych w wojskowym środowisku sieciowym. [link](http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html)
-* satellite.mat - [link](http://odds.cs.stonybrook.edu/satellite-dataset/)
-  Description: X = Multi-dimensional point data, y = labels (1 = outliers, 0 = inliers)
-* ... <- tutaj trzeba wskazać dane na których to testujemy, wybrałem tylko w ramach testowania
 
 Wczytywania danych dla tabeli *satellite.mat*
 
@@ -66,4 +66,22 @@ head(kkdcup_data)
 
 ```
 
-### 
+### **ETAP 1** Sprawdzenie działania algorytmu na sztucznym zbiorze danych oraz publiczne dostępnych zbiorach
+
+
+
+### **ETAP 2** Sprawdzenie wpływu poszczególnych parametrów na jakość uzyskiwanej izolacji wartości odstających
+
+
+
+### **ETAP 3** Badanie działania algorytmu z innymi dostępnymi w języku R metodami detekcji wartości odstających, takich jak:
+
+1. K najbliższych sąsiadów (angl.*k-nearest neighbors*)
+2. Klasyfikacja jednoklasowa (angl. *One-class SVM*)
+3. Lokalny współczynnik wyjątkowości (angl. *Local outlier factor*)
+4. Las losowy (angl. *Random Forests*)
+
+
+K najbliższych sąsiadów
+
+### **ETAP 4** Ocena działania algorytmu
