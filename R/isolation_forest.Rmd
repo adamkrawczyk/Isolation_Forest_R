@@ -22,6 +22,7 @@ output: html_notebook
 * **class** - biblioteka udostępniająca algorytm knn
 * **caret** - biblioteka confisuionMatrix
 * **e1071** - biblioteka dla SVM
+* **randomForest** - biblioteka dla algorytmu RandomForest
 *"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
 
 ```{r message=FALSE, warning=FALSE}
@@ -31,6 +32,7 @@ library(R.matlab)
 library(class)
 library(caret)
 library(e1071)
+library(randomForest)
 # need for confusedMatrix
 #install.packages('e1071', dependencies=)
 
@@ -125,8 +127,9 @@ Cechy:
 
 
 ```{r}
-creditcard_data <- load_data("data/creditcard.csv")
-head(creditcard_data)
+# TODO some problem with open File, Temporary comment this
+#creditcard_data <- load_data("data/creditcard.csv")
+#head(creditcard_data)
 ```
 
 ### Metryki do sprawdzenia wyników
@@ -170,8 +173,7 @@ run_evaluation_metrics <- function(pred, expected) {
 3. Lokalny współczynnik wyjątkowości (angl. *Local outlier factor*)
 4. Las losowy (angl. *Random Forests*)
 
-
-1. K najbliższych sąsiadów
+#### 1. K najbliższych sąsiadów
 
 ```{r}
 run_knn <- function(split_df, k=10) {
@@ -193,7 +195,8 @@ expected <-  factor(split_train_test_df$test[,1])
 run_evaluation_metrics(pred, expected)
 
 ```
-2. Klasyfikacja jednoklasowa
+
+#### 2. Klasyfikacja jednoklasowa
 
 ```{r}
 #library(e1071)
@@ -226,6 +229,44 @@ run_evaluation_metrics(pred, expected)
 
 #summary(model)
 ```
+#### 3. Lokalny współczynnik wyjątkowości
+
+```{r}
+
+```
+
+#### 4. Las losowy
+Specyfikacji odnośnie funkcji randomForest  [Link Random Forest](https://www.rdocumentation.org/packages/randomForest/versions/4.6-14/topics/randomForest)
+
+```{r}
+run_random_forest <- function(split_df) {
+  train <- split_df$train
+  train_no_label <- train[,2:ncol(train)]
+  test <- split_df$test
+  test_no_label <- test[,2:ncol(test)]
+  
+  rf_classifier <- randomForest(x=train_no_label, y=train$label, ntree=100, mtry=2, importance=TRUE)
+  prediction_for_table <- predict(rf_classifier, test_no_label)
+  
+  # prepare result
+  pred_df <- data.frame(pred=prediction_for_table)
+  pred_df$pred[pred_df$pred >= 0.5] <- 1
+  pred_df$pred[pred_df$pred <  0.5] <- 0
+  
+  return(pred_df$pred)
+}
+
+
+split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+
+pred <- factor(run_random_forest(split_train_test_df))
+expected <-  factor(split_train_test_df$test[,1])
+
+# Evaluation
+run_evaluation_metrics(pred, expected)
+
+```
+
 ### **ETAP 4** Ocena działania algorytmu
 ```{r}
 
