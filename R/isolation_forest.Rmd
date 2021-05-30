@@ -1,0 +1,264 @@
+---
+title: "ZUM Projekt"
+autor: Zhan Banzekulivakha. Adam Krawczyk
+last update date: "28 05 2021"
+output: html_notebook
+---
+## Opis projektu
+**Temat projektu:** Nienadzorowana detekcja anomalii za lasu izolacyjnego. Funkcje do tworzenia modelu i predykcji. Porównanie z nadzorowaną detekcją anomalii za pomocą dostępnych w R algorytmów klasyfikacji.
+
+## Struktura katalogów w projekcie przedstawia się nastepująco:
+* **data** - katalog przechowyjący dane wejściowy
+* **info** - katalog przechowujący sprawozdanie porjektu
+* **src**  - katalog przechowujący kod żrodłowy
+* **isolation_forest.Rmd** - główny plik (notatnik) zawierajcy kod źródłowy
+* **isolation_forest.html** - plik wynikowy generowany na podstawie isolation_forest.Rmd
+
+## Wymagane biblioteki na potrzeby projektu
+
+* **ggplot2** - biblioteka udostępnająca narzedzia do tworzenia grafiki, opartym na The Grammar of Graphics.
+* **solitude** - biblioteka udostępnająca narzędzia do implementacji Isolation forest, operta na pracy:
+* **R.matlab** - biblioteka dla wczytywania plików o formacie .mat
+* **class** - biblioteka udostępniająca algorytm knn
+* **caret** - biblioteka confisuionMatrix
+* **e1071** - biblioteka dla SVM
+* **randomForest** - biblioteka dla algorytmu RandomForest
+*"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
+
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(solitude)
+library(R.matlab)
+library(class)
+library(caret)
+library(e1071)
+library(randomForest)
+# need for confusedMatrix
+#install.packages('e1071', dependencies=)
+
+source("src/IsolationForest.R") 
+```
+
+### Przygotowanie danych
+
+* load_mat_data - wczytuje dane z pliku o formacie .mat do tabeli
+* load_data - wczytuje dane z pliku do tabeli (data frame-u) w formacie innych niż *.mat
+* print_mat_data_info - funkcja wypisująca informacja o plikach formatu *.mat. 
+
+```{r}
+load_mat_data <- function(path) {
+  return(readMat(path))
+}
+
+load_data <- function(path) {
+  return(read.table(path, sep = ",", header = ))
+}
+
+prepare_mat_data <- function(mat_data) {
+  df <- data.frame(mat_data$X)
+  return(cbind(label = mat_data$y, df))
+}
+
+print_mat_data_info <- function(data) {
+  arrhytmia_dim <- dim(arrhythmia_data$X)
+  print(paste("Rozmiar X: N=", dim(arrhythmia_data$X)[1], ", M=", dim(arrhythmia_data$X)[2], sep=""))
+  print(paste("Rozmiar Y:", dim(arrhythmia_data$y)[1]))
+}
+```
+
+### Wczytywanie danych
+
+Dane wzięty ze strony [Outlier Detection DataSets (ODDS)](http://odds.cs.stonybrook.edu/) oraz [Kaggle](https://www.kaggle.com/)
+
+1. Credit Card Fraud Detection (Kaggle) [link](https://www.kaggle.com/mlg-ulb/creditcardfraud)
+2. Arrhythmia dataset (ODDS) [link](http://odds.cs.stonybrook.edu/arrhythmia-dataset/)
+3. http (KDDCUP99) dataset (ODDS) [link](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/)
+4. [Temporary] kddcup.data_10_percent_corrected - Zbiór danych obejmuje szeroką gamę ???włamań??? symulowanych w wojskowym środowisku sieciowym. [link](http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html)
+
+#### Wczytywania danych z pliku arrhythmia.mat:
+
+**Opis danych.** Dane składają się z dwóch tabel X i Y:
+
+* X - to wielowymiarowe dane punktowe rozmiaru **N x M**, gdzie N - to liczba punkt, a M - to liczba cech.
+* Y - to zbior etykiety o rozmiarze N (liczby punktów), oznaczajczy czy dany punkt jest wartością odstającą (1 = outliers, 0 = inliers) 
+
+```{r}
+arrhythmia_data <- load_mat_data("data/arrhythmia.mat")
+arrhythmia_data_df <- prepare_mat_data(arrhythmia_data)
+print_mat_data_info(arrhythmia_data)
+```
+
+#### Wczytywania danych z pliku http.mat:
+
+**Opis danych.** Dane składają się z dwóch tabel X i Y:
+
+* X - to wielowymiarowe dane punktowe rozmiaru **N x M**, gdzie N - to liczba punkt, a M - to liczba cech.
+* Y - to zbior etykiety o rozmiarze N (liczby punktów), oznaczajczy czy dany punkt jest wartością odstającą (1 = outliers, 0 = inliers) 
+
+```{r}
+# [TODO] problem with open http.mat:
+#   Error in readMat5(con, firstFourBytes = firstFourBytes, maxLength = maxLength) : 
+#   Reading of MAT v7.3 files is not supported. If possible, save the data in MATLAB using 'save -V6'.
+
+# Uncomment these lines  when the problem is resolved.
+# http_data <- load_mat_data("data/http.mat")
+# http_data_df <- prepare_mat_data(http_data)
+# print_mat_data_info(http_data)
+```
+
+#### Wczytywania danych z pliku creditcard.csv:
+
+**Opis danych**:
+
+Zbiór danych zawiera transakcje dokonane kartami kredytowymi we wrześniu 2013 r. przez europejskich posiadaczy kart.
+Ten zbiór danych przedstawia transakcje, które miały miejsce w ciągu dwóch dni, w których mamy **492 oszustw** z 284 807 transakcji.
+
+Dane przedstawione za pomocą tabeli o rozmiarze **N x M** gdzie:
+
+* N - ilość transakcyj
+* M - liczba cech, których jest 31
+
+Cechy:
+
+1. Ze względu na to, że oryganalnych danych nie można udostępnić, ze względu zabiezpieczęnie danych użytkownika, to mama doczynienia z danymi, które są wynikem redukcji wymiarowości za pomocą PCA (angl. *Principal Component Analysis*).Te cechy w tabele przedstawione jako V1, V2, V3, ... , V28.
+2. Time - zawiera liczba sekund która upłynęła między każdą transakcją a pierwszą transakcją w zbiorze danych.
+3. Amount - to kwota transakcji.
+4. class - przejmuję wartość 1 gdy transakcja jest oszustwej (outliers) i 0 w przeciwnym przypadku.
+
+
+```{r}
+# TODO some problem with open File, Temporary comment this
+#creditcard_data <- load_data("data/creditcard.csv")
+#head(creditcard_data)
+```
+
+### Metryki do sprawdzenia wyników
+
+* **split_data_to_train_and_test** - podział zbioru danych na uczący i testowy 
+* **run_evaluation_metrics** - wyświetelenie macierz błędów (angl. *Confusion matrix*), Recall oraz Precision 
+```{r}
+split_data_to_train_and_test <- function(df, persent_split) {
+  smp_size <- floor(persent_split * nrow(arrhythmia_data_df))
+  ## ustałiam tą wartość, żeby podział był ten samy za kązdym razem
+  set.seed(123)
+  train_ind <- sample(seq_len(nrow(arrhythmia_data_df)), size = smp_size)
+  train <- arrhythmia_data_df[train_ind, ]
+  test <- arrhythmia_data_df[-train_ind, ]
+  train_no_label <- train[,2:ncol(train)]
+  test_no_label <- test[,2:ncol(test)]
+  train_label <- train[,1]
+  return(list(train=train, test=test, train_no_label=train_no_label, test_no_label=test_no_label, train_label=train_label))
+}
+
+run_evaluation_metrics <- function(pred, expected) {
+  precision <- posPredValue(pred, expected)
+  recall <- sensitivity(pred, expected)
+  print(paste("precision: ", precision))
+  print(paste("recall: ", recall))
+  print(confusionMatrix(pred, expected))
+  return(list(precision=precision,recall=recall))
+}
+```
+
+
+### **ETAP 1** Sprawdzenie działania algorytmu na sztucznym zbiorze danych oraz publiczne dostępnych zbiorach
+
+
+
+### **ETAP 2** Sprawdzenie wpływu poszczególnych parametrów na jakość uzyskiwanej izolacji wartości odstających
+
+
+
+### **ETAP 3** Badanie działania algorytmu z innymi dostępnymi w języku R metodami detekcji wartości odstających, takich jak:
+
+1. K najbliższych sąsiadów (angl.*k-nearest neighbors*)
+2. Klasyfikacja jednoklasowa (angl. *One-class SVM*)
+3. Lokalny współczynnik wyjątkowości (angl. *Local outlier factor*)
+4. Las losowy (angl. *Random Forests*)
+
+#### 1. K najbliższych sąsiadów
+
+```{r}
+run_knn <- function(split_df, k=10) {
+  train <- split_df$train
+  test <- split_df$test
+  
+  return(knn(train=split_df$train_no_label, test=split_df$test_no_label, cl=split_df$train_label, k=k))
+}
+
+split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+
+pred <- factor(run_knn(split_train_test_df))
+expected <-  factor(split_train_test_df$test[,1])
+
+# Evaluation
+run_evaluation_metrics(pred, expected)
+
+```
+
+#### 2. Klasyfikacja jednoklasowa
+
+```{r}
+#library(e1071)
+run_one_class_svm <- function(split_df) {
+  
+  # training
+  model <- svm(x=split_df$train_no_label, y=split_df$trainlabel, type='one-classification',kernel='linear')
+  pred <- predict(model, test_no_label)
+  
+  # prepare result
+  pred_df <- data.frame(pred)
+  pred_df$pred[pred_df$pred== "TRUE"] <- 1
+  pred_df$pred[pred_df$pred== "FALSE"] <- 0
+  
+  return(pred_df$pred)
+}
+
+split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+
+pred <- factor(run_one_class_svm(split_train_test_df))
+expected <-  factor(split_train_test_df$test[,1])
+
+# Evaluation
+run_evaluation_metrics(pred, expected)
+
+#summary(model)
+```
+#### 3. Lokalny współczynnik wyjątkowości
+
+```{r}
+
+```
+
+#### 4. Las losowy
+Specyfikacji odnośnie funkcji randomForest  [Link Random Forest](https://www.rdocumentation.org/packages/randomForest/versions/4.6-14/topics/randomForest)
+
+```{r}
+run_random_forest <- function(split_df) {
+  
+  rf_classifier <- randomForest(x=split_df$train_no_label, y=split_df$train_label, ntree=100, mtry=2, importance=TRUE)
+  prediction_for_table <- predict(rf_classifier, split_df$test_no_label)
+  
+  # prepare result
+  pred_df <- data.frame(pred=prediction_for_table)
+  pred_df$pred[pred_df$pred >= 0.5] <- 1
+  pred_df$pred[pred_df$pred <  0.5] <- 0
+  
+  return(pred_df$pred)
+}
+
+
+split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+
+pred <- factor(run_random_forest(split_train_test_df))
+expected <-  factor(split_train_test_df$test[,1])
+
+# Evaluation
+run_evaluation_metrics(pred, expected)
+
+```
+
+### **ETAP 4** Ocena działania algorytmu
+```{r}
+
+```
