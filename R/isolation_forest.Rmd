@@ -21,6 +21,7 @@ output: html_notebook
 * **R.matlab** - biblioteka dla wczytywania plików o formacie .mat
 * **class** - biblioteka udostępniająca algorytm knn
 * **caret** - biblioteka confisuionMatrix
+* **e1071** - biblioteka dla SVM
 *"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
 
 ```{r message=FALSE, warning=FALSE}
@@ -29,8 +30,9 @@ library(solitude)
 library(R.matlab)
 library(class)
 library(caret)
+library(e1071)
 # need for confusedMatrix
-#install.packages('e1071', dependencies=TRUE)
+#install.packages('e1071', dependencies=)
 
 source("src/IsolationForest.R") 
 ```
@@ -47,7 +49,7 @@ load_mat_data <- function(path) {
 }
 
 load_data <- function(path) {
-  return(read.table(path, sep = ",", header = TRUE))
+  return(read.table(path, sep = ",", header = ))
 }
 
 prepare_mat_data <- function(mat_data) {
@@ -169,7 +171,7 @@ run_evaluation_metrics <- function(pred, expected) {
 4. Las losowy (angl. *Random Forests*)
 
 
-K najbliższych sąsiadów
+1. K najbliższych sąsiadów
 
 ```{r}
 run_knn <- function(split_df, k=10) {
@@ -191,9 +193,38 @@ expected <-  factor(split_train_test_df$test[,1])
 run_evaluation_metrics(pred, expected)
 
 ```
+2. Klasyfikacja jednoklasowa
 
 ```{r}
+#library(e1071)
+run_one_class_svm <- function(split_df) {
+  # Prepare test and train data
+  train <- split_df$train
+  train_no_label <- train[,2:ncol(train)]
+  test <- split_df$test
+  test_no_label <- test[,2:ncol(test)]
+  
+  # training
+  model <- svm(x=train_no_label, y=train$label, type='one-classification',kernel='linear')
+  pred <- predict(model, test_no_label)
+  
+  # prepare result
+  pred_df <- data.frame(pred)
+  pred_df$pred[pred_df$pred== "TRUE"] <- 1
+  pred_df$pred[pred_df$pred== "FALSE"] <- 0
+  
+  return(pred_df$pred)
+}
 
+split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+
+pred <- factor(run_one_class_svm(split_train_test_df))
+expected <-  factor(split_train_test_df$test[,1])
+
+# Evaluation
+run_evaluation_metrics(pred, expected)
+
+#summary(model)
 ```
 ### **ETAP 4** Ocena działania algorytmu
 ```{r}
