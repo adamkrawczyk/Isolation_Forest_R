@@ -128,15 +128,27 @@ head(creditcard_data)
 ```
 
 ### Metryki do sprawdzenia wyników
+
+* **split_data_to_train_and_test** - podział zbioru danych na uczący i testowy 
+* **run_evaluation_metrics** - wyświetelenie macierz błędów (angl. *Confusion matrix*), Recall oraz Precision 
 ```{r}
 split_data_to_train_and_test <- function(df, persent_split) {
   smp_size <- floor(persent_split * nrow(arrhythmia_data_df))
-  ## set the seed to make your partition reproducible
+  ## ustałiam tą wartość, żeby podział był ten samy za kązdym razem
   set.seed(123)
   train_ind <- sample(seq_len(nrow(arrhythmia_data_df)), size = smp_size)
   train <- arrhythmia_data_df[train_ind, ]
   test <- arrhythmia_data_df[-train_ind, ]
   return(list(train=train, test=test))
+}
+
+run_evaluation_metrics <- function(pred, expected) {
+  precision <- posPredValue(pred, expected)
+  recall <- sensitivity(pred, expected)
+  print(paste("precision: ", precision))
+  print(paste("recall: ", recall))
+  print(confusionMatrix(pred, expected))
+  return(list(precision=precision,recall=recall))
 }
 ```
 
@@ -174,12 +186,9 @@ split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
 
 pred <- factor(run_knn(split_train_test_df))
 expected <-  factor(split_train_test_df$test[,1])
-# result
-precision <- posPredValue(pred, expected)
-recall <- sensitivity(pred, expected)
-precision
-recall
-confusionMatrix(pred, expected)
+
+# Evaluation
+run_evaluation_metrics(pred, expected)
 
 ```
 
