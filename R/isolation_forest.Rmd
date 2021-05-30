@@ -144,7 +144,10 @@ split_data_to_train_and_test <- function(df, persent_split) {
   train_ind <- sample(seq_len(nrow(arrhythmia_data_df)), size = smp_size)
   train <- arrhythmia_data_df[train_ind, ]
   test <- arrhythmia_data_df[-train_ind, ]
-  return(list(train=train, test=test))
+  train_no_label <- train[,2:ncol(train)]
+  test_no_label <- test[,2:ncol(test)]
+  train_label <- train[,1]
+  return(list(train=train, test=test, train_no_label=train_no_label, test_no_label=test_no_label, train_label=train_label))
 }
 
 run_evaluation_metrics <- function(pred, expected) {
@@ -179,11 +182,8 @@ run_evaluation_metrics <- function(pred, expected) {
 run_knn <- function(split_df, k=10) {
   train <- split_df$train
   test <- split_df$test
-  train_no_label <- train[,2:ncol(train)]
-  test_no_label <- test[,2:ncol(test)]
-  train_label <- train[,1]
   
-  return(knn(train=train_no_label, test=test_no_label, cl=train_label, k=k))
+  return(knn(train=split_df$train_no_label, test=split_df$test_no_label, cl=split_df$train_label, k=k))
 }
 
 split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
@@ -201,14 +201,9 @@ run_evaluation_metrics(pred, expected)
 ```{r}
 #library(e1071)
 run_one_class_svm <- function(split_df) {
-  # Prepare test and train data
-  train <- split_df$train
-  train_no_label <- train[,2:ncol(train)]
-  test <- split_df$test
-  test_no_label <- test[,2:ncol(test)]
   
   # training
-  model <- svm(x=train_no_label, y=train$label, type='one-classification',kernel='linear')
+  model <- svm(x=split_df$train_no_label, y=split_df$trainlabel, type='one-classification',kernel='linear')
   pred <- predict(model, test_no_label)
   
   # prepare result
@@ -240,13 +235,9 @@ Specyfikacji odnośnie funkcji randomForest  [Link Random Forest](https://www.rd
 
 ```{r}
 run_random_forest <- function(split_df) {
-  train <- split_df$train
-  train_no_label <- train[,2:ncol(train)]
-  test <- split_df$test
-  test_no_label <- test[,2:ncol(test)]
   
-  rf_classifier <- randomForest(x=train_no_label, y=train$label, ntree=100, mtry=2, importance=TRUE)
-  prediction_for_table <- predict(rf_classifier, test_no_label)
+  rf_classifier <- randomForest(x=split_df$train_no_label, y=split_df$train_label, ntree=100, mtry=2, importance=TRUE)
+  prediction_for_table <- predict(rf_classifier, split_df$test_no_label)
   
   # prepare result
   pred_df <- data.frame(pred=prediction_for_table)
