@@ -23,6 +23,7 @@ output: html_notebook
 * **caret** - biblioteka confisuionMatrix
 * **e1071** - biblioteka dla SVM
 * **randomForest** - biblioteka dla algorytmu RandomForest
+* **dbscan** - biblioteka dla algorytmu LOF
 *"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
 
 ```{r message=FALSE, warning=FALSE}
@@ -33,6 +34,7 @@ library(class)
 library(caret)
 library(e1071)
 library(randomForest)
+library(dbscan)
 # need for confusedMatrix
 #install.packages('e1071', dependencies=)
 
@@ -136,6 +138,7 @@ Cechy:
 
 * **split_data_to_train_and_test** - podział zbioru danych na uczący i testowy 
 * **run_evaluation_metrics** - wyświetelenie macierz błędów (angl. *Confusion matrix*), Recall oraz Precision 
+
 ```{r}
 split_data_to_train_and_test <- function(df, persent_split) {
   smp_size <- floor(persent_split * nrow(arrhythmia_data_df))
@@ -153,15 +156,43 @@ split_data_to_train_and_test <- function(df, persent_split) {
 run_evaluation_metrics <- function(pred, expected) {
   precision <- posPredValue(pred, expected)
   recall <- sensitivity(pred, expected)
+  conf <- confusionMatrix(pred, expected)
   print(paste("precision: ", precision))
   print(paste("recall: ", recall))
-  print(confusionMatrix(pred, expected))
-  return(list(precision=precision,recall=recall))
+  print(conf)
+  return(list(precision=precision,recall=recall, accuracy=conf$overall[1]))
 }
+
+result_evaluation_list <- list()
 ```
 
 
 ### **ETAP 1** Sprawdzenie działania algorytmu na sztucznym zbiorze danych oraz publiczne dostępnych zbiorach
+
+
+```{r}
+# to remove this note it's just to test
+library(ggplot2)
+library(solitude)
+
+#create and plot sample data
+split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+
+#create isolation forest using isolationForest function from solitude package with default parameters
+iforest<- isolationForest$new()
+
+iforest$fit(split_train_test_df$train_no_label)
+pred <- iforest$predict(split_train_test_df$test_no_label)
+pred$label <- as.factor(ifelse(pred$anomaly_score >=0.60, 1, 0))
+
+expected <-  factor(split_train_test_df$test[,1])
+
+# Evaluation
+run_evaluation_metrics(pred$label, expected)
+run_evaluation_metrics(pred$label, expected)
+```
+
+
 
 
 
@@ -193,7 +224,7 @@ expected <-  factor(split_train_test_df$test[,1])
 
 # Evaluation
 run_evaluation_metrics(pred, expected)
-
+pred
 ```
 
 #### 2. Klasyfikacja jednoklasowa
@@ -204,7 +235,7 @@ run_one_class_svm <- function(split_df) {
   
   # training
   model <- svm(x=split_df$train_no_label, y=split_df$trainlabel, type='one-classification',kernel='linear')
-  pred <- predict(model, test_no_label)
+  pred <- predict(model, split_df$test_no_label)
   
   # prepare result
   pred_df <- data.frame(pred)
@@ -225,10 +256,13 @@ run_evaluation_metrics(pred, expected)
 #summary(model)
 ```
 #### 3. Lokalny współczynnik wyjątkowości
-
+[Todo] Można zajrzeć do tego linku https://www.datatechnotes.com/2017/12/outlier-detection-with-local-outlier.html i zrobić to samo
 ```{r}
-
+split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+lof <- lof(split_train_test_df$train_no_label, minPts = 3)
+lof
 ```
+
 
 #### 4. Las losowy
 Specyfikacji odnośnie funkcji randomForest  [Link Random Forest](https://www.rdocumentation.org/packages/randomForest/versions/4.6-14/topics/randomForest)
