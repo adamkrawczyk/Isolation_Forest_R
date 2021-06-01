@@ -258,6 +258,7 @@ run_evaluation_metrics(pred, expected)
 
 ```
 
+
 ### **ETAP 4** Ocena działania algorytmu
 ```{r}
 
