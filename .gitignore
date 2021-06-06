@@ -3,5 +3,6 @@
 .RData
 .Ruserdata
 
-# dodałem to na razie ponieważ dane zajmują dużo miejsca
-R/data/* 
+# ponieważ zajmuję więcej niż 100 mb, można potem dodać ręcznie w github bezpośrednio
+R/data/creditcard.csv
+R/data/kddcup.data_10_percent_corrected
