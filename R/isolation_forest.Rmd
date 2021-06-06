@@ -168,7 +168,7 @@ run_evaluation_metrics <- function(pred, expected) {
   print(paste("precision: ", precision))
   print(paste("recall: ", recall))
   print(conf)
-  return(list(precision=precision, recall=recall, accuracy=conf$overall[1]))
+  return(list(precision=round(precision, 4), recall=round(recall, 4), accuracy=round(conf$overall[1], 4)))
 }
 
 result_evaluation_list <- list()
@@ -184,6 +184,13 @@ library(ggplot2)
 library(solitude)
 
 #create and plot sample data
+run_isolation_forest <- function(split_df, k=10) {
+  iforest<- isolationForest$new()
+  iforest$fit(split_df$train_no_label)
+  pred <- iforest$predict(split_df$test_no_label)
+  return(ifelse(pred$anomaly_score >=0.60, 1, 0))
+}
+
 split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
 
 #create isolation forest using isolationForest function from solitude package with default parameters
@@ -272,15 +279,21 @@ run_random_forest <- function(split_df) {
 ```
 ## 
 
-*run_algorithm_and_print_result* - funkcja uruchamiająca wybrany algorytm o wybranych parametrach
+*run_algorithm_and_print_result* - funkcja uruchamiająca wybrany algorytm o wybranych parametrach:
+
+1. *data_df* - dane wejściowe
+2. *name_of_algo* - algorytm który ma zadziałać
+3. *split_factor* - procent danych uczących się 
 
 ```{r}
 KNN_algo = "KNN"
 ONE_SVM_algo = "One-SVM"
 LOF_algo = "LOF"
-Rabom_Forest_algo = "Random Forest"
+RF_algo = "Random Forest"
+IF_algo = "Isolation Forest"
 
-run_algorithm_and_print_result <- function(data_df, name_of_algo, split_factor=0.8) {
+run_algorithm_and_print_result <- function(data_df, test_data_name, name_of_algo, df_result, split_factor=0.8) {
+  start.time <- Sys.time()
   split_train_test_df <- split_data_to_train_and_test(data_df, 0.8)
   
   expected <-  factor(split_train_test_df$test[,1])
@@ -289,11 +302,14 @@ run_algorithm_and_print_result <- function(data_df, name_of_algo, split_factor=0
     "KNN" = factor(run_knn(split_train_test_df)),
     "One-SVM"=factor(run_one_class_svm(split_train_test_df)),
     "LOF"=factor(run_random_forest(split_train_test_df)),
-    "Random Forest"=factor(run_random_forest(split_train_test_df))
+    "Random Forest"=factor(run_random_forest(split_train_test_df)),
+    "Isolation Forest"=factor(run_isolation_forest(split_train_test_df))
    )
-
-  # Evaluation
-  run_evaluation_metrics(pred, expected)
+  end.time <- Sys.time()
+  time.taken <- round(end.time - start.time, 4)
+  result_eval = run_evaluation_metrics(pred, expected)
+  
+  return(c(test_data_name, name_of_algo, time.taken, result_eval$precision, result_eval$recall, result_eval$accuracy))
 }
 
 ```
@@ -310,8 +326,16 @@ test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
 ```
 
 ```{r}
-run_algorithm_and_print_result(test_mnist_data_df, KNN_algo)
+df_with_metrics <- data.frame(matrix(ncol = 6, nrow = 0))
+df_with_metrics <- setNames(df_with_metrics, c("test_data_name", "algo", "execution_time","precision", "recall", "accuracy"))
 
+df_with_metrics[nrow(df_with_metrics) + 1,] = run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo, df_with_metrics)
+df_with_metrics
+#alist <- list(a="a", b="b")
+#blist <- list(alist=alist, a="c", b="d")
+#blist$alist$a
+#listres <- list(alist, blist)
+#res_mat <- matrix(unlist(listres),ncol=2,byrow=TRUE)
 ```
 
 
