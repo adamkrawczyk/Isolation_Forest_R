@@ -62,9 +62,9 @@ prepare_mat_data <- function(mat_data) {
 }
 
 print_mat_data_info <- function(data) {
-  arrhytmia_dim <- dim(arrhythmia_data$X)
-  print(paste("Rozmiar X: N=", dim(arrhythmia_data$X)[1], ", M=", dim(arrhythmia_data$X)[2], sep=""))
-  print(paste("Rozmiar Y:", dim(arrhythmia_data$y)[1]))
+  arrhytmia_dim <- dim(data$X)
+  print(paste("Rozmiar X: N=", dim(data$X)[1], ", M=", dim(data$X)[2], sep=""))
+  print(paste("Rozmiar Y:", dim(data$y)[1]))
 }
 ```
 
@@ -134,6 +134,7 @@ Cechy:
 #head(creditcard_data)
 ```
 
+
 ### Metryki do sprawdzenia wyników
 
 * **split_data_to_train_and_test** - podział zbioru danych na uczący i testowy 
@@ -141,12 +142,12 @@ Cechy:
 
 ```{r}
 split_data_to_train_and_test <- function(df, persent_split) {
-  smp_size <- floor(persent_split * nrow(arrhythmia_data_df))
+  smp_size <- floor(persent_split * nrow(df))
   ## ustałiam tą wartość, żeby podział był ten samy za kązdym razem
   set.seed(123)
-  train_ind <- sample(seq_len(nrow(arrhythmia_data_df)), size = smp_size)
-  train <- arrhythmia_data_df[train_ind, ]
-  test <- arrhythmia_data_df[-train_ind, ]
+  train_ind <- sample(seq_len(nrow(df)), size = smp_size)
+  train <- df[train_ind, ]
+  test <- df[-train_ind, ]
   train_no_label <- train[,2:ncol(train)]
   test_no_label <- test[,2:ncol(test)]
   train_label <- train[,1]
@@ -160,7 +161,7 @@ run_evaluation_metrics <- function(pred, expected) {
   print(paste("precision: ", precision))
   print(paste("recall: ", recall))
   print(conf)
-  return(list(precision=precision,recall=recall, accuracy=conf$overall[1]))
+  return(list(precision=precision, recall=recall, accuracy=conf$overall[1]))
 }
 
 result_evaluation_list <- list()
@@ -180,7 +181,6 @@ split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
 
 #create isolation forest using isolationForest function from solitude package with default parameters
 iforest<- isolationForest$new()
-
 iforest$fit(split_train_test_df$train_no_label)
 pred <- iforest$predict(split_train_test_df$test_no_label)
 pred$label <- as.factor(ifelse(pred$anomaly_score >=0.60, 1, 0))
@@ -189,7 +189,7 @@ expected <-  factor(split_train_test_df$test[,1])
 
 # Evaluation
 run_evaluation_metrics(pred$label, expected)
-run_evaluation_metrics(pred$label, expected)
+
 ```
 
 
@@ -216,21 +216,11 @@ run_knn <- function(split_df, k=10) {
   
   return(knn(train=split_df$train_no_label, test=split_df$test_no_label, cl=split_df$train_label, k=k))
 }
-
-split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
-
-pred <- factor(run_knn(split_train_test_df))
-expected <-  factor(split_train_test_df$test[,1])
-
-# Evaluation
-run_evaluation_metrics(pred, expected)
-pred
 ```
 
 #### 2. Klasyfikacja jednoklasowa
 
 ```{r}
-#library(e1071)
 run_one_class_svm <- function(split_df) {
   
   # training
@@ -244,23 +234,15 @@ run_one_class_svm <- function(split_df) {
   
   return(pred_df$pred)
 }
-
-split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
-
-pred <- factor(run_one_class_svm(split_train_test_df))
-expected <-  factor(split_train_test_df$test[,1])
-
-# Evaluation
-run_evaluation_metrics(pred, expected)
-
-#summary(model)
 ```
+
 #### 3. Lokalny współczynnik wyjątkowości
 [Todo] Można zajrzeć do tego linku https://www.datatechnotes.com/2017/12/outlier-detection-with-local-outlier.html i zrobić to samo
+
 ```{r}
 split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
 lof <- lof(split_train_test_df$train_no_label, minPts = 3)
-lof
+
 ```
 
 
@@ -280,20 +262,81 @@ run_random_forest <- function(split_df) {
   
   return(pred_df$pred)
 }
+```
+## 
 
+*run_algorithm_and_print_result* - funkcja uruchamiająca wybrany algorytm o wybranych parametrach
 
-split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+```{r}
+KNN_algo = "KNN"
+ONE_SVM_algo = "One-SVM"
+LOF_algo = "LOF"
+Rabom_Forest_algo = "Random Forest"
 
-pred <- factor(run_random_forest(split_train_test_df))
-expected <-  factor(split_train_test_df$test[,1])
+run_algorithm_and_print_result <- function(data_df, name_of_algo, split_factor=0.8) {
+  split_train_test_df <- split_data_to_train_and_test(data_df, 0.8)
+  
+  expected <-  factor(split_train_test_df$test[,1])
+  pred = switch(
+    name_of_algo,
+    "KNN" = factor(run_knn(split_train_test_df)),
+    "One-SVM"=factor(run_one_class_svm(split_train_test_df)),
+    "LOF"=factor(run_random_forest(split_train_test_df)),
+    "Random Forest"=factor(run_random_forest(split_train_test_df))
+   )
 
-# Evaluation
-run_evaluation_metrics(pred, expected)
+  # Evaluation
+  run_evaluation_metrics(pred, expected)
+}
 
 ```
 
 
 ### **ETAP 4** Ocena działania algorytmu
+
+### [TODO] Dany rozdział do usunięcia:
+
+```{r}
+test_satellite_data <- load_mat_data("data/temporary/satellite.mat")
+test_satellite_data_df <- prepare_mat_data(test_satellite_data)
+print_mat_data_info(test_satellite_data)
+```
+
 ```{r}
 
+
+run_algorithm_and_print_result(cover_data_df, KNN_algo)
+
 ```
+
+
+```{r}
+library(caret)
+library("plotROC")
+# Train and evaluate
+
+# Evaluation
+run_evaluation_metrics(pred, expected)
+
+# finish Train and evaluate
+
+roc.estimate <- calculate_roc(pred, expected)
+single.rocplot <- ggroc(roc.estimate)
+plot_journal_roc(single.rocplot)
+
+
+```
+# Just for tests! [TO remove]
+
+```{r}
+library("ROCR")
+
+cover_data
+
+pred_a <- prediction(c(pred), c(expected))
+perf <- performance(pred_a, "tpr","fpr")
+plot(perf,col="blue")
+
+abline(0,1)
+```
+
