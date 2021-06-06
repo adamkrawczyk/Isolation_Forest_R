@@ -151,7 +151,8 @@ Cechy:
 split_data_to_train_and_test <- function(df, persent_split) {
   smp_size <- floor(persent_split * nrow(df))
   ## ustałiam tą wartość, żeby podział był ten samy za kązdym razem
-  set.seed(123)
+  #set.seed(123)
+  set.seed(.Random.seed)
   train_ind <- sample(seq_len(nrow(df)), size = smp_size)
   train <- df[train_ind, ]
   test <- df[-train_ind, ]
@@ -326,8 +327,10 @@ test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
 ```
 
 ```{r}
+# Zbieramy tutaj dane
+name_of_cols = c("test_data_name", "algo", "execution_time","precision", "recall", "accuracy")
 df_with_metrics <- data.frame(matrix(ncol = 6, nrow = 0))
-df_with_metrics <- setNames(df_with_metrics, c("test_data_name", "algo", "execution_time","precision", "recall", "accuracy"))
+df_with_metrics <- setNames(df_with_metrics, name_of_cols)
 
 df_with_metrics[nrow(df_with_metrics) + 1,] = run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo, df_with_metrics)
 df_with_metrics
@@ -336,6 +339,22 @@ df_with_metrics
 #blist$alist$a
 #listres <- list(alist, blist)
 #res_mat <- matrix(unlist(listres),ncol=2,byrow=TRUE)
+```
+Test czasu
+
+```{r}
+range = 4
+df_with_metrics <- data.frame(matrix(ncol = 6, nrow = 0))
+df_with_metrics <- setNames(df_with_metrics, name_of_cols)
+
+for(i in 1:range) {
+  df_with_metrics[nrow(df_with_metrics) + 1,] = run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo, df_with_metrics)
+
+}
+df_with_metrics
+```
+```{r}
+
 ```
 
 
