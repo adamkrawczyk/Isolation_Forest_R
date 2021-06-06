@@ -61,10 +61,18 @@ prepare_mat_data <- function(mat_data) {
   return(cbind(label = mat_data$y, df))
 }
 
-print_mat_data_info <- function(data) {
-  arrhytmia_dim <- dim(data$X)
-  print(paste("Rozmiar X: N=", dim(data$X)[1], ", M=", dim(data$X)[2], sep=""))
-  print(paste("Rozmiar Y:", dim(data$y)[1]))
+print_data_info <- function(data_df, file_name) {
+  print(paste("Information for file:", file_name))
+  outliers_num <- nrow(data_df[data_df$label == 1,])
+  print(paste("Ilość danych N: ", nrow(data_df), ", Liczba parametrów M: ", ncol(data_df) - 1, ", Liczba ouliers: ", outliers_num, sep=""))
+}
+
+mat_to_df <- function(file_name) {
+  data <- load_mat_data(file_name)
+  data_df <- prepare_mat_data(data)
+  print_data_info(data_df, file_name)
+  
+  return(data_df)
 }
 ```
 
@@ -85,9 +93,8 @@ Dane wzięty ze strony [Outlier Detection DataSets (ODDS)](http://odds.cs.stonyb
 * Y - to zbior etykiety o rozmiarze N (liczby punktów), oznaczajczy czy dany punkt jest wartością odstającą (1 = outliers, 0 = inliers) 
 
 ```{r}
-arrhythmia_data <- load_mat_data("data/arrhythmia.mat")
-arrhythmia_data_df <- prepare_mat_data(arrhythmia_data)
-print_mat_data_info(arrhythmia_data)
+arrhythmia_data_df <- mat_to_df("data/arrhythmia.mat")
+
 ```
 
 #### Wczytywania danych z pliku http.mat:
@@ -297,15 +304,13 @@ run_algorithm_and_print_result <- function(data_df, name_of_algo, split_factor=0
 ### [TODO] Dany rozdział do usunięcia:
 
 ```{r}
-test_satellite_data <- load_mat_data("data/temporary/satellite.mat")
-test_satellite_data_df <- prepare_mat_data(test_satellite_data)
-print_mat_data_info(test_satellite_data)
+test_satellite_data_df <- mat_to_df("data/temporary/satellite.mat")
+test_cover_data_df <- mat_to_df("data/temporary/cover.mat")
+test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
 ```
 
 ```{r}
-
-
-run_algorithm_and_print_result(cover_data_df, KNN_algo)
+run_algorithm_and_print_result(test_mnist_data_df, KNN_algo)
 
 ```
 
