@@ -178,42 +178,86 @@ result_evaluation_list <- list()
 
 ### **ETAP 1** Sprawdzenie działania algorytmu na sztucznym zbiorze danych oraz publiczne dostępnych zbiorach
 
+# Stworzenie sztucznego zbioru danych
 
+```{r eval = FALSE}
+# 
+n = 1000
+Var1 = c(rnorm(n, 0, 0.5), rnorm(n*0.1, -2, 1))
+Var2 = c(rnorm(n, 0, 0.5), rnorm(n*0.1,  2, 1))
+outliers = c(rep(0, n), rep(1, (0.1*n))) + 3
+data = data.frame(Var1, Var2)
+```
+
+# Traning oraz predykcja za pomocą algorytmu Isolation forest na sztucznym zbiorze danych
+
+```{r eval = FALSE}
+iforest <- IsolationForest$new()
+
+num_of_tree = 100
+subsetSize = 200
+
+data$fit <- iforest$fit(data, num_of_tree, subsetSize)
+data$pred <- iforest$predict(data, subsetSize, 0.5)
+data$outlier <- as.factor(ifelse(data$pred >=0.50, "outlier", "normal"))
+```
+
+# Wynik działania algorytmu 
+
+```{r eval = FALSE}
+ggplot(data, aes(x = Var1, y = Var2, color = outlier)) + 
+  geom_point(shape = 1, alpha = 0.5) +
+  labs(x = "x", y = "y") +
+  labs(alpha = "", colour="Legend")
+
+```
+
+
+[TODO] to remove in future it's just to check 
 ```{r}
 # to remove this note it's just to test
 library(ggplot2)
 library(solitude)
 
 #create and plot sample data
-run_isolation_forest <- function(split_df, k=10) {
-  iforest<- isolationForest$new()
+run_isolation_forest <- function(split_df, sub_set_size=256, num_of_trees = 100) {
+  iforest<- isolationForest$new(sample_size=sub_set_size, num_trees=num_of_trees)
   iforest$fit(split_df$train_no_label)
-  pred <- iforest$predict(split_df$test_no_label)
-  return(ifelse(pred$anomaly_score >=0.60, 1, 0))
+  pred <- iforest$predict(split_df$train_no_label)
+  return(ifelse(pred$anomaly_score >0.60, 1, 0))
 }
+#test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
 
-split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+#split_train_test_df <- split_data_to_train_and_test(test_mnist_data_df, 0.8)
+#pred <- factor(run_isolation_forest(split_train_test_df))
 
-#create isolation forest using isolationForest function from solitude package with default parameters
-iforest<- isolationForest$new()
-iforest$fit(split_train_test_df$train_no_label)
-pred <- iforest$predict(split_train_test_df$test_no_label)
-pred$label <- as.factor(ifelse(pred$anomaly_score >=0.60, 1, 0))
-
-expected <-  factor(split_train_test_df$test[,1])
+#expected <-  factor(split_df$train_label)
 
 # Evaluation
-run_evaluation_metrics(pred$label, expected)
+#run_evaluation_metrics(pred, expected)
 
 ```
 
-
-
-
-
 ### **ETAP 2** Sprawdzenie wpływu poszczególnych parametrów na jakość uzyskiwanej izolacji wartości odstających
 
+```{r eval = FALSE}
+run_implemented_isolation_forest <- function(split_df, sub_set_size=256, num_of_trees = 100) {
+  iforest <- IsolationForest$new()
+  fit <- iforest$fit(split_df$train_no_label, num_of_tree, sub_set_size)
+  pred <- iforest$predict(split_df$train_no_label, sub_set_size, 0.5)
+  
+  return(pred)
+}
 
+test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
+split_train_test_df <- split_data_to_train_and_test(test_mnist_data_df, 0.8)
+
+pred <- factor(run_implemented_isolation_forest(split_train_test_df))
+expected <-  factor(split_train_test_df$train_label)
+
+run_evaluation_metrics(factor(pred), expected)
+
+```
 
 ### **ETAP 3** Badanie działania algorytmu z innymi dostępnymi w języku R metodami detekcji wartości odstających, takich jak:
 
@@ -293,11 +337,19 @@ LOF_algo = "LOF"
 RF_algo = "Random Forest"
 IF_algo = "Isolation Forest"
 
-run_algorithm_and_print_result <- function(data_df, test_data_name, name_of_algo, df_result, split_factor=0.8) {
+run_algorithm_and_print_result <- function(data_df, test_data_name, name_of_algo, split_factor=0.8) {
   start.time <- Sys.time()
   split_train_test_df <- split_data_to_train_and_test(data_df, 0.8)
   
-  expected <-  factor(split_train_test_df$test[,1])
+  expected = switch(
+    name_of_algo,
+    "Isolation Forest"=factor(split_train_test_df$train_label)
+    )
+  
+  if (is.null(expected)) {
+    expected <- factor(split_train_test_df$test[,1])
+  }
+  
   pred = switch(
     name_of_algo,
     "KNN" = factor(run_knn(split_train_test_df)),
@@ -309,7 +361,7 @@ run_algorithm_and_print_result <- function(data_df, test_data_name, name_of_algo
   end.time <- Sys.time()
   time.taken <- round(end.time - start.time, 4)
   result_eval = run_evaluation_metrics(pred, expected)
-  
+  print("i 'm here")
   return(c(test_data_name, name_of_algo, time.taken, result_eval$precision, result_eval$recall, result_eval$accuracy))
 }
 
@@ -332,14 +384,10 @@ name_of_cols = c("test_data_name", "algo", "execution_time","precision", "recall
 df_with_metrics <- data.frame(matrix(ncol = 6, nrow = 0))
 df_with_metrics <- setNames(df_with_metrics, name_of_cols)
 
-df_with_metrics[nrow(df_with_metrics) + 1,] = run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo, df_with_metrics)
-df_with_metrics
-#alist <- list(a="a", b="b")
-#blist <- list(alist=alist, a="c", b="d")
-#blist$alist$a
-#listres <- list(alist, blist)
-#res_mat <- matrix(unlist(listres),ncol=2,byrow=TRUE)
+run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo)
+
 ```
+
 Test czasu
 
 ```{r}
@@ -348,7 +396,7 @@ df_with_metrics <- data.frame(matrix(ncol = 6, nrow = 0))
 df_with_metrics <- setNames(df_with_metrics, name_of_cols)
 
 for(i in 1:range) {
-  df_with_metrics[nrow(df_with_metrics) + 1,] = run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo, df_with_metrics)
+  df_with_metrics[nrow(df_with_metrics) + 1,] = run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo)
 
 }
 df_with_metrics

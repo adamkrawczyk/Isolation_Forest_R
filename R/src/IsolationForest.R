@@ -6,7 +6,7 @@ normalize <- function(x) {
 }
 
 computeC <- function(n) {
-  return(2 * (log(n - 1) + 0.5772156649) - (2 * (n - 1) / n))
+  return(2.0 * (log(n - 1) + 0.5772156649) - (2.0 * (n - 1) / n * 1.0))
 }
 
 
@@ -28,7 +28,7 @@ IsolationForest = R6::R6Class(
     , model = NULL
     ,
     initialize = function(sample_size = 256
-                          , num_trees = 10
+                          , num_trees = 100
                           , replace = FALSE
                           , seed = 101
                           , nproc = NULL
@@ -46,7 +46,7 @@ IsolationForest = R6::R6Class(
     },
 
 
-  fit = function(data, numberOfTrees = self$num_of_trees, subsetSize = self$sample_size) {
+  fit = function(data, numberOfTrees = self$num_trees, subsetSize = self$sample_size) {
     self$status = "not_trained"
     maxTreeDepth = log(subsetSize, 2)
     if (subsetSize > nrow(data)) {
@@ -54,6 +54,7 @@ IsolationForest = R6::R6Class(
       warning("Subset size bigger than number of data rows, 
             changing subset size to number of data rows")
     }
+    print(paste("[FIT] subsetSize: ", subsetSize))
     for (i in 1:numberOfTrees) {
       tree <- Node$new("tree")
       subSet <- data[sample(nrow(data), subsetSize),]
@@ -140,6 +141,7 @@ IsolationForest = R6::R6Class(
 
     #############aaaaaaaaaah why this is null????????????????????????????
     if (tree$children[[1]]$leaf == 1) {
+      
       if (tree$children[[1]]$obsCount == 1) {
         return(tree$children[[1]]$depth)
       } else {
@@ -160,8 +162,7 @@ IsolationForest = R6::R6Class(
     return(self$pathLength(child, row))
   }
   ,
-  predict = function(data, subsetSize = 256) {
-
+  predict = function(data, subsetSize = self$sample_size, score_factor_arg = 0.5) {
     if (subsetSize > nrow(data)) {
       subsetSize = nrow(data)
       warning("Subset size bigger than number of data rows, 
@@ -171,7 +172,10 @@ IsolationForest = R6::R6Class(
     predictions = list()
     n = subsetSize
     c_const = computeC(n)
-
+    score_factor = score_factor_arg
+    
+    print(paste("score factor=", score_factor, " , subsetSize = ", n))
+    
     for (i in 1:nrow(data)) {
       averageDepth <- 0
       for (j in 4:length(self$trees)) {
@@ -179,8 +183,11 @@ IsolationForest = R6::R6Class(
         averageDepth <- averageDepth + depth
       }
       averageDepth <- averageDepth / (length(self$trees) - 3)
+      
+      s_score <- 2 ^ (-averageDepth / c_const)
 
-      if (2 ^ (-averageDepth / c_const) > 0.5) {
+      #print(s_score)
+      if (s_score > score_factor) {
         tmpPrediction = 1
       } else {
         tmpPrediction = 0
