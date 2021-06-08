@@ -34,8 +34,9 @@ library(class)
 library(caret)
 library(e1071)
 library(randomForest)
-library(dbscan)
 library(CORElearn)
+library(Rlof)
+library(dbscan)
 # need for confusedMatrix
 #install.packages('e1071', dependencies=)
 
@@ -300,8 +301,16 @@ run_one_class_svm <- function(split_df) {
 [Todo] Można zajrzeć do tego linku https://www.datatechnotes.com/2017/12/outlier-detection-with-local-outlier.html i zrobić to samo
 
 ```{r}
-split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
-lof <- lof(split_train_test_df$train_no_label, minPts = 3)
+run_lof <- function(split_df, kth_distance=10, threshold=0.9) {
+  mlof = lof(split_df$train, k=kth_distance)
+  thr = quantile(mlof, threshold)
+  
+  pred_df <- data.frame(pred=mlof)
+  pred_df$pred[pred_df$pred < thr] <- 0
+  pred_df$pred[pred_df$pred >= thr] <- 1
+  
+  return(pred_df$pred)
+}
 
 ```
 
@@ -426,27 +435,33 @@ plot_journal_roc(single.rocplot)
 # Just for tests! [TO remove]
 
 ```{r}
-library("ROCR")
-
-test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
-
-split_train_test_df <- split_data_to_train_and_test(test_mnist_data_df, 0.8)
-pred <- factor(run_random_forest(split_train_test_df))
-expected <- factor(split_train_test_df$test[,1])
-length(pred)
-length(expected)
-run_evaluation_metrics(pred, expected)
-#pred_a <- prediction(c(pred), c(expected))
-#perf <- performance(pred_a, "tpr","fpr")
-#plot(perf,col="blue")
+mlof = lof(split_train_test_df$train, k=10)
+head(mlof)
+quantile(mlof)
+quantile(mlof, .90)
 
 #abline(0,1)
 ```
+
+```{r}
+pred_df <- data.frame(pred=mlof)
+thr = quantile(mlof, .90)
+factor <- thr
+pred_df$pred[pred_df$pred < factor] <- 0
+pred_df$pred[pred_df$pred >= factor] <- 1
+
+pred_1 <- factor(pred_df$pred)
+expcected_1 <- factor(split_train_test_df$train_label)
+run_evaluation_metrics(pred_1, expcected_1)
+
+```
+
+
 ```{r}
 test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
 
 split_train_test_df <- split_data_to_train_and_test(test_mnist_data_df, 0.8)
-pred_1 <- factor(run_random_forest(split_train_test_df))
+pred_1 <- factor(run_lof(split_train_test_df))
 expcected_1 <- factor(split_train_test_df$train_label)
 run_evaluation_metrics(pred_1, expcected_1)
 
@@ -463,7 +478,7 @@ pred_plot_2 <- prediction(c(pred_2), c(expcected_2))
 perf <- performance( pred_plot, "tpr", "fpr" )
 perf2 <- performance(pred_plot_2, "tpr", "fpr")
 plot(perf, col="blue")
-plot(perf2, add = TRUE, col="red")
+plot(perf2, add = TRUE, col="red", sub="Sub-title")
 abline(0,1)
 #pred 
 ```
