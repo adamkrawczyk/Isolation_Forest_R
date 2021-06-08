@@ -22,7 +22,8 @@ output: html_notebook
 * **class** - biblioteka udostępniająca algorytm knn
 * **caret** - biblioteka confisuionMatrix
 * **e1071** - biblioteka dla SVM
-* **randomForest** - biblioteka dla algorytmu RandomForest
+* **CORElearn** - biblioteka dla algorytmu RandomForest
+* **dbscan** - biblioteka dla algorytmu LOF
 *"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
 
 ```{r message=FALSE, warning=FALSE}
@@ -33,6 +34,9 @@ library(class)
 library(caret)
 library(e1071)
 library(randomForest)
+library(CORElearn)
+library(Rlof)
+library(dbscan)
 # need for confusedMatrix
 #install.packages('e1071', dependencies=)
 
@@ -59,10 +63,18 @@ prepare_mat_data <- function(mat_data) {
   return(cbind(label = mat_data$y, df))
 }
 
-print_mat_data_info <- function(data) {
-  arrhytmia_dim <- dim(arrhythmia_data$X)
-  print(paste("Rozmiar X: N=", dim(arrhythmia_data$X)[1], ", M=", dim(arrhythmia_data$X)[2], sep=""))
-  print(paste("Rozmiar Y:", dim(arrhythmia_data$y)[1]))
+print_data_info <- function(data_df, file_name) {
+  print(paste("Information for file:", file_name))
+  outliers_num <- nrow(data_df[data_df$label == 1,])
+  print(paste("Ilość danych N: ", nrow(data_df), ", Liczba parametrów M: ", ncol(data_df) - 1, ", Liczba ouliers: ", outliers_num, sep=""))
+}
+
+mat_to_df <- function(file_name) {
+  data <- load_mat_data(file_name)
+  data_df <- prepare_mat_data(data)
+  print_data_info(data_df, file_name)
+  
+  return(data_df)
 }
 ```
 
@@ -83,9 +95,8 @@ Dane wzięty ze strony [Outlier Detection DataSets (ODDS)](http://odds.cs.stonyb
 * Y - to zbior etykiety o rozmiarze N (liczby punktów), oznaczajczy czy dany punkt jest wartością odstającą (1 = outliers, 0 = inliers) 
 
 ```{r}
-arrhythmia_data <- load_mat_data("data/arrhythmia.mat")
-arrhythmia_data_df <- prepare_mat_data(arrhythmia_data)
-print_mat_data_info(arrhythmia_data)
+arrhythmia_data_df <- mat_to_df("data/arrhythmia.mat")
+
 ```
 
 #### Wczytywania danych z pliku http.mat:
@@ -132,18 +143,21 @@ Cechy:
 #head(creditcard_data)
 ```
 
+
 ### Metryki do sprawdzenia wyników
 
 * **split_data_to_train_and_test** - podział zbioru danych na uczący i testowy 
 * **run_evaluation_metrics** - wyświetelenie macierz błędów (angl. *Confusion matrix*), Recall oraz Precision 
+
 ```{r}
 split_data_to_train_and_test <- function(df, persent_split) {
-  smp_size <- floor(persent_split * nrow(arrhythmia_data_df))
+  smp_size <- floor(persent_split * nrow(df))
   ## ustałiam tą wartość, żeby podział był ten samy za kązdym razem
-  set.seed(123)
-  train_ind <- sample(seq_len(nrow(arrhythmia_data_df)), size = smp_size)
-  train <- arrhythmia_data_df[train_ind, ]
-  test <- arrhythmia_data_df[-train_ind, ]
+  #set.seed(123)
+  set.seed(555)
+  train_ind <- sample(seq_len(nrow(df)), size = smp_size)
+  train <- df[train_ind, ]
+  test <- df[-train_ind, ]
   train_no_label <- train[,2:ncol(train)]
   test_no_label <- test[,2:ncol(test)]
   train_label <- train[,1]
@@ -153,21 +167,99 @@ split_data_to_train_and_test <- function(df, persent_split) {
 run_evaluation_metrics <- function(pred, expected) {
   precision <- posPredValue(pred, expected)
   recall <- sensitivity(pred, expected)
+  conf <- confusionMatrix(pred, expected)
   print(paste("precision: ", precision))
   print(paste("recall: ", recall))
-  print(confusionMatrix(pred, expected))
-  return(list(precision=precision,recall=recall))
+  print(conf)
+  return(list(precision=round(precision, 4), recall=round(recall, 4), accuracy=round(conf$overall[1], 4)))
 }
+
+result_evaluation_list <- list()
 ```
 
 
 ### **ETAP 1** Sprawdzenie działania algorytmu na sztucznym zbiorze danych oraz publiczne dostępnych zbiorach
 
+# Stworzenie sztucznego zbioru danych
 
+```{r eval = FALSE}
+# 
+n = 1000
+Var1 = c(rnorm(n, 0, 0.5), rnorm(n*0.1, -2, 1))
+Var2 = c(rnorm(n, 0, 0.5), rnorm(n*0.1,  2, 1))
+outliers = c(rep(0, n), rep(1, (0.1*n))) + 3
+data = data.frame(Var1, Var2)
+```
+
+# Traning oraz predykcja za pomocą algorytmu Isolation forest na sztucznym zbiorze danych
+
+```{r eval = FALSE}
+iforest <- IsolationForest$new()
+
+num_of_tree = 100
+subsetSize = 200
+
+data$fit <- iforest$fit(data, num_of_tree, subsetSize)
+data$pred <- iforest$predict(data, subsetSize, 0.5)
+data$outlier <- as.factor(ifelse(data$pred >=0.50, "outlier", "normal"))
+```
+
+# Wynik działania algorytmu 
+
+```{r eval = FALSE}
+ggplot(data, aes(x = Var1, y = Var2, color = outlier)) + 
+  geom_point(shape = 1, alpha = 0.5) +
+  labs(x = "x", y = "y") +
+  labs(alpha = "", colour="Legend")
+
+```
+
+
+[TODO] to remove in future it's just to check 
+```{r}
+# to remove this note it's just to test
+library(ggplot2)
+library(solitude)
+
+#create and plot sample data
+run_isolation_forest <- function(split_df, sub_set_size=256, num_of_trees = 100) {
+  iforest<- isolationForest$new(sample_size=sub_set_size, num_trees=num_of_trees)
+  iforest$fit(split_df$train_no_label)
+  pred <- iforest$predict(split_df$train_no_label)
+  return(ifelse(pred$anomaly_score >0.60, 1, 0))
+}
+#test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
+
+#split_train_test_df <- split_data_to_train_and_test(test_mnist_data_df, 0.8)
+#pred <- factor(run_isolation_forest(split_train_test_df))
+
+#expected <-  factor(split_df$train_label)
+
+# Evaluation
+#run_evaluation_metrics(pred, expected)
+
+```
 
 ### **ETAP 2** Sprawdzenie wpływu poszczególnych parametrów na jakość uzyskiwanej izolacji wartości odstających
 
+```{r eval = FALSE}
+run_implemented_isolation_forest <- function(split_df, sub_set_size=256, num_of_trees = 100) {
+  iforest <- IsolationForest$new()
+  fit <- iforest$fit(split_df$train_no_label, num_of_tree, sub_set_size)
+  pred <- iforest$predict(split_df$train_no_label, sub_set_size, 0.5)
+  
+  return(pred)
+}
 
+test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
+split_train_test_df <- split_data_to_train_and_test(test_mnist_data_df, 0.8)
+
+pred <- factor(run_implemented_isolation_forest(split_train_test_df))
+expected <-  factor(split_train_test_df$train_label)
+
+run_evaluation_metrics(factor(pred), expected)
+
+```
 
 ### **ETAP 3** Badanie działania algorytmu z innymi dostępnymi w języku R metodami detekcji wartości odstających, takich jak:
 
@@ -185,26 +277,16 @@ run_knn <- function(split_df, k=10) {
   
   return(knn(train=split_df$train_no_label, test=split_df$test_no_label, cl=split_df$train_label, k=k))
 }
-
-split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
-
-pred <- factor(run_knn(split_train_test_df))
-expected <-  factor(split_train_test_df$test[,1])
-
-# Evaluation
-run_evaluation_metrics(pred, expected)
-
 ```
 
 #### 2. Klasyfikacja jednoklasowa
 
 ```{r}
-#library(e1071)
 run_one_class_svm <- function(split_df) {
   
   # training
   model <- svm(x=split_df$train_no_label, y=split_df$trainlabel, type='one-classification',kernel='linear')
-  pred <- predict(model, test_no_label)
+  pred <- predict(model, split_df$test_no_label)
   
   # prepare result
   pred_df <- data.frame(pred)
@@ -213,22 +295,25 @@ run_one_class_svm <- function(split_df) {
   
   return(pred_df$pred)
 }
-
-split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
-
-pred <- factor(run_one_class_svm(split_train_test_df))
-expected <-  factor(split_train_test_df$test[,1])
-
-# Evaluation
-run_evaluation_metrics(pred, expected)
-
-#summary(model)
 ```
+
 #### 3. Lokalny współczynnik wyjątkowości
+[Todo] Można zajrzeć do tego linku https://www.datatechnotes.com/2017/12/outlier-detection-with-local-outlier.html i zrobić to samo
 
 ```{r}
+run_lof <- function(split_df, kth_distance=10, threshold=0.9) {
+  mlof = lof(split_df$train, k=kth_distance)
+  thr = quantile(mlof, threshold)
+  
+  pred_df <- data.frame(pred=mlof)
+  pred_df$pred[pred_df$pred < thr] <- 0
+  pred_df$pred[pred_df$pred >= thr] <- 1
+  
+  return(pred_df$pred)
+}
 
 ```
+
 
 #### 4. Las losowy
 Specyfikacji odnośnie funkcji randomForest  [Link Random Forest](https://www.rdocumentation.org/packages/randomForest/versions/4.6-14/topics/randomForest)
@@ -236,30 +321,166 @@ Specyfikacji odnośnie funkcji randomForest  [Link Random Forest](https://www.rd
 ```{r}
 run_random_forest <- function(split_df) {
   
-  rf_classifier <- randomForest(x=split_df$train_no_label, y=split_df$train_label, ntree=100, mtry=2, importance=TRUE)
-  prediction_for_table <- predict(rf_classifier, split_df$test_no_label)
+  md <- CoreModel(label ~ ., split_df$train, model="rf", rfNoTrees=30, 
+                maxThreads=1)
   
-  # prepare result
-  pred_df <- data.frame(pred=prediction_for_table)
-  pred_df$pred[pred_df$pred >= 0.5] <- 1
-  pred_df$pred[pred_df$pred <  0.5] <- 0
+  outliers<- rfOutliers(md, split_train_test_df$train)
+  pred_df <- data.frame(pred=abs(outliers))
+  pred_df$pred[pred_df$pred <  2] <- 0
+  pred_df$pred[pred_df$pred >= 2] <- 1
   
   return(pred_df$pred)
 }
+```
+## 
 
+*run_algorithm_and_print_result* - funkcja uruchamiająca wybrany algorytm o wybranych parametrach:
 
-split_train_test_df <- split_data_to_train_and_test(arrhythmia_data_df, 0.8)
+1. *data_df* - dane wejściowe
+2. *name_of_algo* - algorytm który ma zadziałać
+3. *split_factor* - procent danych uczących się 
 
-pred <- factor(run_random_forest(split_train_test_df))
-expected <-  factor(split_train_test_df$test[,1])
+```{r}
+KNN_algo = "KNN"
+ONE_SVM_algo = "One-SVM"
+LOF_algo = "LOF"
+RF_algo = "Random Forest"
+IF_algo = "Isolation Forest"
 
-# Evaluation
-run_evaluation_metrics(pred, expected)
+run_algorithm_and_print_result <- function(data_df, test_data_name, name_of_algo, split_factor=0.8) {
+  start.time <- Sys.time()
+  split_train_test_df <- split_data_to_train_and_test(data_df, 0.8)
+  
+  expected = switch(
+    name_of_algo,
+    "Isolation Forest"=factor(split_train_test_df$train_label)
+    )
+  
+  if (is.null(expected)) {
+    expected <- factor(split_train_test_df$test[,1])
+  }
+  
+  pred = switch(
+    name_of_algo,
+    "KNN" = factor(run_knn(split_train_test_df)),
+    "One-SVM"=factor(run_one_class_svm(split_train_test_df)),
+    "LOF"=factor(run_random_forest(split_train_test_df)),
+    "Random Forest"=factor(run_random_forest(split_train_test_df)),
+    "Isolation Forest"=factor(run_isolation_forest(split_train_test_df))
+   )
+  end.time <- Sys.time()
+  time.taken <- round(end.time - start.time, 4)
+  result_eval = run_evaluation_metrics(pred, expected)
+  print("i 'm here")
+  return(c(test_data_name, name_of_algo, time.taken, result_eval$precision, result_eval$recall, result_eval$accuracy))
+}
 
 ```
 
 
 ### **ETAP 4** Ocena działania algorytmu
+
+### [TODO] Dany rozdział do usunięcia:
+
+```{r}
+test_satellite_data_df <- mat_to_df("data/temporary/satellite.mat")
+test_cover_data_df <- mat_to_df("data/temporary/cover.mat")
+test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
+```
+
+```{r}
+# Zbieramy tutaj dane
+name_of_cols = c("test_data_name", "algo", "execution_time","precision", "recall", "accuracy")
+df_with_metrics <- data.frame(matrix(ncol = 6, nrow = 0))
+df_with_metrics <- setNames(df_with_metrics, name_of_cols)
+
+run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo)
+
+```
+
+Test czasu
+
+```{r}
+range = 4
+df_with_metrics <- data.frame(matrix(ncol = 6, nrow = 0))
+df_with_metrics <- setNames(df_with_metrics, name_of_cols)
+
+for(i in 1:range) {
+  df_with_metrics[nrow(df_with_metrics) + 1,] = run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo)
+
+}
+df_with_metrics
+```
 ```{r}
 
 ```
+
+
+```{r}
+library(caret)
+library("plotROC")
+# Train and evaluate
+
+# Evaluation
+run_evaluation_metrics(pred, expected)
+
+# finish Train and evaluate
+
+roc.estimate <- calculate_roc(pred, expected)
+single.rocplot <- ggroc(roc.estimate)
+plot_journal_roc(single.rocplot)
+
+
+```
+# Just for tests! [TO remove]
+
+```{r}
+mlof = lof(split_train_test_df$train, k=10)
+head(mlof)
+quantile(mlof)
+quantile(mlof, .90)
+
+#abline(0,1)
+```
+
+```{r}
+pred_df <- data.frame(pred=mlof)
+thr = quantile(mlof, .90)
+factor <- thr
+pred_df$pred[pred_df$pred < factor] <- 0
+pred_df$pred[pred_df$pred >= factor] <- 1
+
+pred_1 <- factor(pred_df$pred)
+expcected_1 <- factor(split_train_test_df$train_label)
+run_evaluation_metrics(pred_1, expcected_1)
+
+```
+
+
+```{r}
+test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
+
+split_train_test_df <- split_data_to_train_and_test(test_mnist_data_df, 0.8)
+pred_1 <- factor(run_lof(split_train_test_df))
+expcected_1 <- factor(split_train_test_df$train_label)
+run_evaluation_metrics(pred_1, expcected_1)
+
+pred_2 <- factor(run_isolation_forest(split_train_test_df))
+expcected_2 <- factor(split_train_test_df$train_label)
+run_evaluation_metrics(pred_2, expcected_2)
+
+```
+
+
+```{r}
+pred_plot <- prediction(c(pred_1), c(expcected_1))
+pred_plot_2 <- prediction(c(pred_2), c(expcected_2))
+perf <- performance( pred_plot, "tpr", "fpr" )
+perf2 <- performance(pred_plot_2, "tpr", "fpr")
+plot(perf, col="blue")
+plot(perf2, add = TRUE, col="red", sub="Sub-title")
+abline(0,1)
+#pred 
+```
+
+
