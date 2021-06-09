@@ -294,7 +294,7 @@ run_if_with_param <- function(test_data_name, data_df, sub_set_size, num_of_tree
 
 
 
-```{r}
+```{r echo=FALSE}
 df_with_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
 df_with_metrics <- setNames(df_with_metrics, name_of_cols)
 
@@ -303,7 +303,7 @@ num_of_tree <- 20
 data_df <- arrhythmia_data_df
 test_data_name <- "arrhytmia"
 
-set_of_tree_nums <- list(10, 50, 100, 200)
+set_of_tree_nums <- list(10, 20, 40, 80, 140, 180, 250, 300)
 for(tree_num in set_of_tree_nums) {
   df_with_metrics[nrow(df_with_metrics) + 1,] = run_if_with_param(test_data_name, data_df, sub_set_size, tree_num)
 }
@@ -313,11 +313,22 @@ grafiki
 
 ```{r}
 head(df_with_metrics)
-level_order <- factor(df_with_metrics$num_of_trees, level = set_of_tree_nums)
+tree_num_in_subset <- factor(df_with_metrics$num_of_trees, level = set_of_tree_nums)
 
-ggplot(df_with_metrics, aes(x=level_order, y=TNR, color='red')) + geom_line(aes(group=2)) + geom_point() + theme_bw()
+#ggplot(df_with_metrics, aes(x=tree_num_in_subset, y=TNR, color='TNR')) + geom_line(aes(group=2)) + geom_point() + theme_bw()
 
-#ggplot(df_with_metrics, aes(TPR, num_of_trees)) + geom_line() + facet_grid(series ~ .)
+ggplot(df_with_metrics, aes(tree_num_in_subset)) +
+  geom_line(aes(y = TPR, color = "TPR/recall", group=2)) +
+  geom_line(aes(y = TNR, color = "TNR", group=2)) +
+  geom_line(aes(y = PPV, color = "PPV/precision", group=2)) +
+  geom_line(aes(y = NPV, color = "NPV", group=2)) +
+  labs(
+      title = "Wpływ wartości liczba podzbiora danych na parametry z confussion matrix",
+      x = "Liczba danych wykorzystana dla tworzenia drzewa",
+      y = "Procent [%]"
+    )
+
+
 ```
 
 #### Test by num_of_tree

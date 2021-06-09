@@ -1,4 +1,4 @@
-source("IsolationForest.R")
+source("R/src/IsolationForest.R")
 # install.packages("data.tree")
 library(ggplot2)
 # library(data.tree)
@@ -31,7 +31,7 @@ iforest <- IsolationForest$new()
 # iforest <- isolationForest(data,50)
 
 #predict outliers within dataset
-data$fit <- iforest$fit(data, 1)
+data$fit <- iforest$fit(data, 10)
 data$pred <- iforest$predict(data)
 print(data$pred)
 data$outlier <- as.factor(ifelse(data$pred >=0.55, "outlier", "normal"))
