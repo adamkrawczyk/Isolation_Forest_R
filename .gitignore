@@ -4,6 +4,6 @@
 .Ruserdata
 
 # ponieważ zajmuję więcej niż 100 mb, można potem dodać ręcznie w github bezpośrednio
-R/data/creditcard.csv
+#R/data/creditcard.csv
 R/data/kddcup.data_10_percent_corrected
 R/data/temporary*
