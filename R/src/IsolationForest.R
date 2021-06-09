@@ -58,58 +58,42 @@ IsolationForest = R6::R6Class(
     for (i in 1:numberOfTrees) {
       tree <- Node$new("tree")
       subSet <- data[sample(nrow(data), subsetSize),]
-      #print(paste0("Building tree: ", i))
       self$buildTree(tree, subSet, maxTreeDepth, 0)
-      ##print("children in building forest")
-      ##print(tree$children)
       trees = append(trees, tree)
-      # #print(trees)
     }
     model = structure(list(trees = trees), class = "isolationForestClass")
-    # return(trees)
-    # return(model)
     self$trees = trees
     self$model = model
     self$status = "trained"
   },
 
-  buildTree = function(node, data, remainingDepth, actualDepth) {
-    ##print(data[1:10,])
-    node$obsCount <- nrow(data)
-    ##print(paste0("remainingDepth: ", remainingDepth))
-    if (node$obsCount == 0) {
-      child <- node$AddChild('breakpoint')
-      child$feature <- ' '
-      child$obsCount <- 0
-      child$depth <- actualDepth
-      child$leaf <- 1
+  createChild = function(node, node_name, obs_count, feature, depth, leaf) {
+    child <- node$AddChild(node_name)
+    child$obsCount <- obs_count
+    child$feature <- feature
+    child$depth <- depth
+    child$leaf <- leaf
+  },
 
+  buildTree = function(node, data, remainingDepth, actualDepth) {
+    node$obsCount <- nrow(data)
+    if (node$obsCount == 0) {
+      child <- self$createChild(node, 'breakpoint', 0, ' ', actualDepth, 1)
     }
     else if (node$obsCount == 1 | remainingDepth == 0) {
-      #construct leaf when 1 object in node or max depth reached
-      child <- node$AddChild('breakpoint')
       node$feature <- tail(names(data), 1)
-      child$obsCount <- 1
-      child$feature <- ''
-      child$depth <- actualDepth
-      child$leaf <- 1
+      child <- self$createChild(node, 'breakpoint', 1, ' ', actualDepth, 1)
     }
 
     else {
 
       numberOfFeatures <- length(names(data))
-      # set.seed(123)
       whichFeature <- sample(1:numberOfFeatures, 1, replace = TRUE)
       feature <- names(data)[whichFeature]
       vector <- data[, whichFeature, drop = FALSE]
       if (var(vector, na.rm = TRUE) == 0) {
-        #create leaf if for a given feature there is only 1 value
-        child <- node$AddChild('same_values')
         node$feature <- tail(names(data), 1)
-        child$obsCount <- nrow(data)
-        child$feature <- ''
-        child$depth <- actualDepth
-        child$leaf <- 1
+        child <- self$createChild(node, 'same_values', nrow(data), ' ', actualDepth, 1)
       }
       else {
         remainingDepth <- remainingDepth - 1
@@ -117,14 +101,12 @@ IsolationForest = R6::R6Class(
         node$feature <- feature
         minValue <- min(vector, na.rm = TRUE)
         maxValue <- max(vector, na.rm = TRUE)
-        # set.seed(123)
         splitPoint <- runif(1, min = minValue, max = maxValue)
         node$splitPoint <- splitPoint
         childObs <- split(data,
                           data[, feature] > splitPoint,
                           drop = TRUE)
         for (i in 1:length(childObs)) {
-          #construct a child having the name of that feature value (e.g. 'red')
           name <- paste(feature, toString(splitPoint), "greater", names(childObs)[i], sep = " ")
           child <- node$AddChild(name)
           child$leaf <- 0
@@ -137,11 +119,8 @@ IsolationForest = R6::R6Class(
   ,
 
   pathLength = function(tree, row) {
-    # print(tree$children)
-
-    #############aaaaaaaaaah why this is null????????????????????????????
     if (tree$children[[1]]$leaf == 1) {
-      
+
       if (tree$children[[1]]$obsCount == 1) {
         return(tree$children[[1]]$depth)
       } else {
@@ -149,7 +128,6 @@ IsolationForest = R6::R6Class(
       }
 
     }
-    #print("searching tree")
     feature <- tree$feature
     splitPoint <- tree$splitPoint
     if (row[1, feature] > splitPoint) {
@@ -173,9 +151,9 @@ IsolationForest = R6::R6Class(
     n = subsetSize
     c_const = computeC(n)
     score_factor = score_factor_arg
-    
+
     print(paste("score factor=", score_factor, " , subsetSize = ", n))
-    
+
     for (i in 1:nrow(data)) {
       averageDepth <- 0
       for (j in 4:length(self$trees)) {
@@ -183,16 +161,13 @@ IsolationForest = R6::R6Class(
         averageDepth <- averageDepth + depth
       }
       averageDepth <- averageDepth / (length(self$trees) - 3)
-      
-      s_score <- 2 ^ (-averageDepth / c_const)
 
-      #print(s_score)
+      s_score <- 2 ^ (-averageDepth / c_const)
       if (s_score > score_factor) {
         tmpPrediction = 1
       } else {
         tmpPrediction = 0
       }
-      # predictions <- append(predictions, 2^(-averageDepth/c_const))
       predictions <- append(predictions, tmpPrediction)
     }
 
