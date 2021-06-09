@@ -294,48 +294,34 @@ run_if_with_param <- function(test_data_name, data_df, sub_set_size, num_of_tree
 
 ```
 
-Wykres przedstawia wpływ wartości oznaczająca liczba tworzynych drzew w lasie izolaczynjnym na wyniki działania algorytmu. Jako wyniki podane dane z *confision matrix*.
+```{r echo=FALSE, message=FALSE}
+metric_for_num_of_tree <- function(test_data_name, data_df, set_of_tree_nums, title, x_title, y_title) {
+  df_tree_nums_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
+  df_tree_nums_metrics <- setNames(df_tree_nums_metrics, name_of_cols)
 
-```{r echo=FALSE, message=FALSE, results='hide'}
-df_tree_nums_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
-df_tree_nums_metrics <- setNames(df_tree_nums_metrics, name_of_cols)
-
-sub_set_size <- 256
-data_df <- arrhythmia_data_df
-test_data_name <- "arrhytmia"
-
-set_of_tree_nums <- list(10, 20, 40, 80, 140, 180, 250, 300)
-for(tree_num in set_of_tree_nums) {
-  df_tree_nums_metrics[nrow(df_tree_nums_metrics) + 1,] = run_if_with_param(test_data_name, data_df, sub_set_size, tree_num)
+  sub_set_size <- 256
+  
+  for(tree_num in set_of_tree_nums) {
+    df_tree_nums_metrics[nrow(df_tree_nums_metrics) + 1,] = run_if_with_param(test_data_name, data_df, sub_set_size, tree_num)
+  }
+  
+  tree_num_in_subset <- factor(df_tree_nums_metrics$num_of_trees, level = set_of_tree_nums)
+  
+  plot <- ggplot(df_tree_nums_metrics, aes(tree_num_in_subset)) +
+          geom_line(aes(y = TPR, color = "TPR/recall", group=2)) +
+          geom_line(aes(y = TNR, color = "TNR", group=2)) +
+          geom_line(aes(y = PPV, color = "PPV/precision", group=2)) +
+          geom_line(aes(y = NPV, color = "NPV", group=2)) +
+          labs(
+              title = title,
+              y = y_title,
+              x = x_title
+            ) +
+          theme(legend.position="top")
+  return(list(metrics=df_tree_nums_metrics, plot=plot))
 }
 
-tree_num_in_subset <- factor(df_tree_nums_metrics$num_of_trees, level = set_of_tree_nums)
 
-ggplot(df_tree_nums_metrics, aes(tree_num_in_subset)) +
-  geom_line(aes(y = TPR, color = "TPR/recall", group=2)) +
-  geom_line(aes(y = TNR, color = "TNR", group=2)) +
-  geom_line(aes(y = PPV, color = "PPV/precision", group=2)) +
-  geom_line(aes(y = NPV, color = "NPV", group=2)) +
-  labs(
-      title = "Wpływ wartości liczba podzbiora danych na parametry z confussion matrix",
-      y = "Procent [%]",
-      x = "Liczba danych wykorzystana dla tworzenia drzewa"
-    )
-
-```
-
-```{r}
-
-```
-
-
-**prepare_sub_set_size_list** - przygotowanie zbióra danych określąjący wielkość zbiorów wykorzystanych dla tworzenia drzewa (10%, 20%, ... ,100% od zbiora danych). Parametry:
-
-* **size_of_data** - rozmiar danych.
-
-Wykres przedstawia wpływ wartości oznaczająca liczba zbiora danych z którego tworzone poszczególne drzewa w lasie izolaczynjnym na wyniki działania algorytmu. Jako wyniki podane dane z *confision matrix*.
-
-```{r echo=FALSE, message=FALSE, results='hide'}
 prepare_sub_set_size_list <- function(size_of_data) {
   result = c()
   for(i in c(1:10)) {
@@ -344,60 +330,104 @@ prepare_sub_set_size_list <- function(size_of_data) {
   return(result)
 }
 
-tree_num <- 20
-sub_sets_size_list <- prepare_sub_set_size_list(nrow(data_df))
-
-df_sub_set_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
-df_sub_set_metrics <- setNames(df_sub_set_metrics, name_of_cols)
-
-for(sub_set in sub_sets_size_list) {
-  df_sub_set_metrics[nrow(df_sub_set_metrics) + 1,] = run_if_with_param(test_data_name, data_df, sub_set, tree_num)
+metric_for_sub_set_size <- function(test_data_name, data_df, sub_sets_size_list, title, x_title, y_title) {
+  tree_num <- 20
+  
+  df_sub_set_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
+  df_sub_set_metrics <- setNames(df_sub_set_metrics, name_of_cols)
+  
+  for(sub_set in sub_sets_size_list) {
+    df_sub_set_metrics[nrow(df_sub_set_metrics) + 1,] = run_if_with_param(test_data_name, data_df, sub_set, tree_num)
+  }
+  
+  tree_num_in_subset <- factor(df_sub_set_metrics$sub_set_size, level = sub_sets_size_list)
+  
+  plot <- ggplot(df_sub_set_metrics, aes(tree_num_in_subset)) +
+          geom_line(aes(y = TPR, color = "TPR/recall", group=2)) +
+          geom_line(aes(y = TNR, color = "TNR", group=2)) +
+          geom_line(aes(y = PPV, color = "PPV/precision", group=2)) +
+          geom_line(aes(y = NPV, color = "NPV", group=2)) +
+          labs(
+              title = title,
+              x = x_title,
+              y = y_title
+            ) +
+          theme(legend.position="top")
+  return(list(metrics=df_tree_nums_metrics, plot=plot))
 }
 
-tree_num_in_subset <- factor(df_sub_set_metrics$sub_set_size )
-
-ggplot(df_sub_set_metrics, aes(tree_num_in_subset)) +
-  geom_line(aes(y = TPR, color = "TPR/recall", group=2)) +
-  geom_line(aes(y = TNR, color = "TNR", group=2)) +
-  geom_line(aes(y = PPV, color = "PPV/precision", group=2)) +
-  geom_line(aes(y = NPV, color = "NPV", group=2))
-  labs(
-      title = "Wpływ wartości liczba podzbiora danych na parametry z confussion matrix",
-      x = "Procent [%]",
-      y = "Liczba danych wykorzystana dla tworzenia drzewa"
-    )
-
+run_all_combination <- function(data_df, sub_sets_size_list, set_of_tree_nums) {
+  df_sub_set_and_tree_num_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
+  df_sub_set_and_tree_num_metrics <- setNames(df_sub_set_and_tree_num_metrics, name_of_cols)
+  
+  for(sub_set_size in sub_sets_size_list) {
+    for(tree_num in set_of_tree_nums) {
+      df_sub_set_and_tree_num_metrics[nrow(df_sub_set_and_tree_num_metrics) + 1,] = run_if_with_param(test_data_name, data_df, sub_set_size, tree_num)
+    }
+  }
+  
+  return(df_sub_set_and_tree_num_metrics)
+}
 ```
-
 
 
 ```{r echo=FALSE, message=FALSE, results='hide'}
-# Sprawdzenie wszystkich kombinacyj tree_num i sub_set_size
-df_sub_set_and_tree_num_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
-df_sub_set_and_tree_num_metrics <- setNames(df_sub_set_and_tree_num_metrics, name_of_cols)
+name_of_data <- "arrhytmia"
+data_to_test <- arrhythmia_data_df
 
-for(sub_set_size in sub_sets_size_list) {
-  for(tree_num in set_of_tree_nums) {
-    df_sub_set_and_tree_num_metrics[nrow(df_sub_set_and_tree_num_metrics) + 1,] = run_if_with_param(test_data_name, data_df, sub_set_size, tree_num)
-  }
-}
+set_of_tree_nums <- list(10, 20, 40, 80, 140, 180, 250, 300)
+result_metrics_num_of_tree <- metric_for_num_of_tree(name_of_data,
+                                                     data_to_test,
+                                                     set_of_tree_nums,
+                                                     title="",
+                                                     x_title="Liczba tworzonych drzew w isolation forest",
+                                                     y_title="Procent [%]")
+
+sub_sets_size_list <- prepare_sub_set_size_list(nrow(data_to_test))
+result_metrics_sub_set_size <- metric_for_sub_set_size(name_of_data,
+                                                       data_to_test,
+                                                       sub_sets_size_list,
+                                                       title="",
+                                                       x_title="Liczba danych dla tworzenia jednego drzewa",
+                                                       y_title="Procent [%]")
+
+run_all_combination(data_to_test, set_of_tree_nums, sub_sets_size_list)
 ```
+
+Wykres po lewej stronie przedstawia wpływ wartości oznaczająca liczba tworzynych drzew w lasie izolaczynjnym na wyniki działania algorytmu. Jako wyniki podane dane z **confision matrix**.
+
+Wykres po prawej przedstawia wpływ wartości oznaczająca liczba zbiora danych z którego tworzone poszczególne drzewa w lasie izolaczynjnym na wyniki działania algorytmu. Jako wyniki podane dane z *confision matrix*.
+
+```{r}
+library(grid)
+library(gridExtra)
+grid.arrange(result_metrics_num_of_tree$plot, result_metrics_sub_set_size$plot, ncol = 2, widths=c(2,2))
+```
+
 
 Poszukiwanie najlepszej konfiguracji parametrów według **precision**:
 
 ```{r}
 df_sub_set_and_tree_num_metrics_ppv <- df_sub_set_and_tree_num_metrics[order(df_sub_set_and_tree_num_metrics$PPV, decreasing = TRUE),]
-df_show <- df_sub_set_and_tree_num_metrics_ppv[1:10, ]
-subset(df_show, select=c("execution_time", "sub_set_size", "num_of_trees", "PPV"))
+df_show <- df_sub_set_and_tree_num_metrics_ppv[1:5, ]
+df_show<- subset(df_show, select=c("sub_set_size", "num_of_trees", "PPV"))
+knitr::kable(df_show, align = "lccrr")
+
 ```
 
 Poszukiwanie najlepszej konfiguracji parametrów według **recall**:
 
 ```{r}
 df_sub_set_and_tree_num_metrics_tpr <- df_sub_set_and_tree_num_metrics[order(df_sub_set_and_tree_num_metrics$TPR, decreasing = TRUE),]
-df_show <- df_sub_set_and_tree_num_metrics_tpr[1:10, ]
-subset(df_show, select=c("execution_time", "sub_set_size", "num_of_trees", "TPR"))
+df_show <- df_sub_set_and_tree_num_metrics_tpr[1:5, ]
+df_show <- subset(df_show, select=c("sub_set_size", "num_of_trees", "TPR"))
+knitr::kable(df_show, align = "lccrr")
 ```
+
+```{r}
+
+```
+
 
 ### **ETAP 3** Badanie działania algorytmu z innymi dostępnymi w języku R metodami detekcji wartości odstających, takich jak:
 
