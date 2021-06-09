@@ -228,7 +228,7 @@ ggplot(data, aes(x = Var1, y = Var2, color = outlier)) +
 
 
 [TODO] to remove in future it's just to check 
-```{r}
+```{r include = FALSE}
 #create and plot sample data
 run_isolation_forest <- function(data_df, sub_set_size=256, num_of_trees = 100, anomaly_score = 0.5) {
   iforest<- isolationForest$new(sample_size=sub_set_size, num_trees=num_of_trees)
@@ -248,7 +248,7 @@ Parametry:
 * *sub_set_size* - liczba podzbiorza danych używanych dla tworzenia pojedycznego drzewa
 * *num_of_trees* - liczba tworzych drzew w lasu
 
-```{r eval = FALSE}
+```{r eval=FALSE}
 run_implemented_isolation_forest <- function(split_df, sub_set_size=256, num_of_trees = 100) {
   iforest <- IsolationForest$new()
   fit <- iforest$fit(split_df$train_no_label, num_of_tree, sub_set_size)
@@ -269,11 +269,7 @@ run_implemented_isolation_forest <- function(split_df, sub_set_size=256, num_of_
 name_of_cols = c("test_data_name", "execution_time", "sub_set_size", "num_of_trees", "TPR", "TNR", "PPV", "NPV")
 
 run_if_with_param <- function(test_data_name, data_df, sub_set_size, num_of_tree) {
-```
-
-
-```{r}
-prepare_data_to_test <- prepare_train_data(data_df)
+  prepare_data_to_test <- prepare_train_data(data_df)
 
   start.time <- Sys.time()
   pred <- factor(run_isolation_forest(prepare_data_to_test, sub_set_size, num_of_tree, 0.6))
@@ -300,7 +296,7 @@ prepare_data_to_test <- prepare_train_data(data_df)
 
 Wykres przedstawia wpływ wartości oznaczająca liczba tworzynych drzew w lasie izolaczynjnym na wyniki działania algorytmu. Jako wyniki podane dane z *confision matrix*.
 
-```{r echo=FALSE}
+```{r echo=FALSE, message=FALSE, results='hide'}
 df_tree_nums_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
 df_tree_nums_metrics <- setNames(df_tree_nums_metrics, name_of_cols)
 
@@ -326,8 +322,12 @@ ggplot(df_tree_nums_metrics, aes(tree_num_in_subset)) +
       x = "Liczba danych wykorzystana dla tworzenia drzewa"
     )
 
+```
+
+```{r}
 
 ```
+
 
 **prepare_sub_set_size_list** - przygotowanie zbióra danych określąjący wielkość zbiorów wykorzystanych dla tworzenia drzewa (10%, 20%, ... ,100% od zbiora danych). Parametry:
 
@@ -335,7 +335,7 @@ ggplot(df_tree_nums_metrics, aes(tree_num_in_subset)) +
 
 Wykres przedstawia wpływ wartości oznaczająca liczba zbiora danych z którego tworzone poszczególne drzewa w lasie izolaczynjnym na wyniki działania algorytmu. Jako wyniki podane dane z *confision matrix*.
 
-```{r}
+```{r echo=FALSE, message=FALSE, results='hide'}
 prepare_sub_set_size_list <- function(size_of_data) {
   result = c()
   for(i in c(1:10)) {
@@ -371,7 +371,8 @@ ggplot(df_sub_set_metrics, aes(tree_num_in_subset)) +
 
 
 
-```{r}
+```{r echo=FALSE, message=FALSE, results='hide'}
+# Sprawdzenie wszystkich kombinacyj tree_num i sub_set_size
 df_sub_set_and_tree_num_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
 df_sub_set_and_tree_num_metrics <- setNames(df_sub_set_and_tree_num_metrics, name_of_cols)
 
@@ -380,18 +381,22 @@ for(sub_set_size in sub_sets_size_list) {
     df_sub_set_and_tree_num_metrics[nrow(df_sub_set_and_tree_num_metrics) + 1,] = run_if_with_param(test_data_name, data_df, sub_set_size, tree_num)
   }
 }
-
-df_sub_set_and_tree_num_metrics
 ```
+
+Poszukiwanie najlepszej konfiguracji parametrów według **precision**:
+
 ```{r}
 df_sub_set_and_tree_num_metrics_ppv <- df_sub_set_and_tree_num_metrics[order(df_sub_set_and_tree_num_metrics$PPV, decreasing = TRUE),]
-df_sub_set_and_tree_num_metrics_ppv[1:5,]
-
+df_show <- df_sub_set_and_tree_num_metrics_ppv[1:10, ]
+subset(df_show, select=c("execution_time", "sub_set_size", "num_of_trees", "PPV"))
 ```
+
+Poszukiwanie najlepszej konfiguracji parametrów według **recall**:
 
 ```{r}
 df_sub_set_and_tree_num_metrics_tpr <- df_sub_set_and_tree_num_metrics[order(df_sub_set_and_tree_num_metrics$TPR, decreasing = TRUE),]
-df_sub_set_and_tree_num_metrics_tpr[1:5,]
+df_show <- df_sub_set_and_tree_num_metrics_tpr[1:10, ]
+subset(df_show, select=c("execution_time", "sub_set_size", "num_of_trees", "TPR"))
 ```
 
 ### **ETAP 3** Badanie działania algorytmu z innymi dostępnymi w języku R metodami detekcji wartości odstających, takich jak:
