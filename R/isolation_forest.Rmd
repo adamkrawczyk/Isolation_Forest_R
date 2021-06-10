@@ -26,7 +26,7 @@ output: html_notebook
 * **dbscan** - biblioteka dla algorytmu LOF
 *"Isolation-Based Anomaly Detection"* (FEI TONY LIU, KAI MING TING, ZHI-HUA ZHOU)
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE echo=FALSE,results='hide',fig.keep='all', eval=FALSE}
 library(ggplot2)
 library(solitude)
 library(R.matlab)
@@ -50,7 +50,7 @@ source("src/IsolationForest.R")
 * **load_data** - wczytuje dane z pliku do tabeli (data frame-u) w formacie innych niż *.mat
 * **print_mat_data_info** - funkcja wypisująca informacja o plikach formatu *.mat. 
 
-```{r}
+```{r echo=FALSE,results='hide',fig.keep='all', eval=FALSE}
 load_mat_data <- function(path) {
   return(readMat(path))
 }
@@ -103,7 +103,7 @@ Dane wzięty ze strony [Outlier Detection DataSets (ODDS)](http://odds.cs.stonyb
 * X - to wielowymiarowe dane punktowe rozmiaru **N x M**, gdzie N - to liczba punkt, a M - to liczba cech.
 * Y - to zbior etykiety o rozmiarze N (liczby punktów), oznaczajczy czy dany punkt jest wartością odstającą (1 = outliers, 0 = inliers) 
 
-```{r}
+```{r echo=FALSE,results='hide',fig.keep='all', eval=FALSE}
 arrhythmia_data_df <- mat_to_df("data/arrhythmia.mat")
 head(arrhythmia_data_df, 3)
 ```
@@ -249,7 +249,7 @@ run_isolaton_forest <- function(split_df, sub_set_size=256, num_of_trees = 100) 
 * precision albo positive predictive value (PPV)
 * negative albo predictive value (NPV)
 
-```{r}
+```{r message=FALSE, warning=FALSE echo=FALSE,results='hide',fig.keep='all', eval=FALSE}
 name_of_cols = c("test_data_name", "execution_time", "sub_set_size", "num_of_trees", "TPR", "TNR", "PPV", "NPV")
 
 run_if_with_param <- function(test_data_name, data_df, sub_set_size, num_of_tree) {
@@ -278,7 +278,7 @@ run_if_with_param <- function(test_data_name, data_df, sub_set_size, num_of_tree
 
 ```
 
-```{r echo=FALSE, message=FALSE}
+```{r message=FALSE, warning=FALSE echo=FALSE,results='hide',fig.keep='all', eval=FALSE}
 metric_for_num_of_tree <- function(test_data_name, data_df, set_of_tree_nums, title, x_title, y_title) {
   df_tree_nums_metrics <- data.frame(matrix(ncol = 8, nrow = 0))
   df_tree_nums_metrics <- setNames(df_tree_nums_metrics, name_of_cols)
@@ -358,7 +358,7 @@ run_all_combination <- function(data_df, sub_sets_size_list, set_of_tree_nums) {
 
 #### Sprawdzenie dla zbioru danych z pliku *arrhytmia*
 
-```{r echo=FALSE, results='hide'}
+```{r message=FALSE, warning=FALSE echo=FALSE,results='hide',fig.keep='all', eval=FALSE}
 name_of_data <- "arrhytmia"
 data_to_test <- arrhythmia_data_df
 
@@ -468,30 +468,30 @@ nie udało się ze względu małej liczby mocy obliczeniowej lokalnej maszyny
 ```{r, eval=false, echo=FALSE, message=FALSE}
 # nie dało się za bardzo dużo faktorów oraz danych
 
-name_of_data <- "http"
-data_to_test <- creditcard_data_df
-split_ind <- sample(seq_len(nrow(data_to_test)), size = 30000)
-data_to_test <- data_to_test[split_ind, ]
+#name_of_data <- "http"
+#data_to_test <- creditcard_data_df
+#split_ind <- sample(seq_len(nrow(data_to_test)), size = 30000)
+#data_to_test <- data_to_test[split_ind, ]
 
-set_of_tree_nums <- list(10, 50, 100, 150, 200, 250)
-result_metrics_num_of_tree <- metric_for_num_of_tree(name_of_data,
-                                                     data_to_test,
-                                                     set_of_tree_nums,
-                                                     title="",
-                                                     x_title="Liczba tworzonych drzew w isolation forest",
-                                                     y_title="Procent [%]")
+#set_of_tree_nums <- list(10, 50, 100, 150, 200, 250)
+#result_metrics_num_of_tree <- metric_for_num_of_tree(name_of_data,
+#                                                     data_to_test,
+#                                                     set_of_tree_nums,
+#                                                     title="",
+#                                                     x_title="Liczba tworzonych drzew w isolation forest",
+#                                                     y_title="Procent [%]")
 
-sub_sets_size_list <- prepare_sub_set_size_list(nrow(data_to_test))
-result_metrics_sub_set_size <- metric_for_sub_set_size(name_of_data,
-                                                       data_to_test,
-                                                       sub_sets_size_list,
-                                                       title="",
-                                                       x_title="Liczba danych dla tworzenia jednego drzewa",
-                                                       y_title="Procent [%]")
+#sub_sets_size_list <- prepare_sub_set_size_list(nrow(data_to_test))
+#result_metrics_sub_set_size <- metric_for_sub_set_size(name_of_data,
+#                                                       data_to_test,
+#                                                       sub_sets_size_list,
+#                                                       title="",
+#                                                       x_title="Liczba danych dla tworzenia jednego drzewa",
+#                                                       y_title="Procent [%]")
 
-df_sub_set_and_tree_num_metrics <- run_all_combination(data_to_test, set_of_tree_nums, sub_sets_size_list)
+#df_sub_set_and_tree_num_metrics <- run_all_combination(data_to_test, set_of_tree_nums, sub_sets_size_list)
 
-grid.arrange(result_metrics_num_of_tree$plot, result_metrics_sub_set_size$plot, ncol = 2, widths=c(2,2))
+#grid.arrange(result_metrics_num_of_tree$plot, result_metrics_sub_set_size$plot, ncol = 2, widths=c(2,2))
 ```
 
 Poszukiwanie najlepszej konfiguracji parametrów według **precision**:
@@ -559,7 +559,7 @@ run_one_class_svm <- function(split_df) {
 
 #### 3. Lokalny współczynnik wyjątkowości
 
-```{r}
+```{r }
 run_lof <- function(split_df, kth_distance=10, threshold=0.9) {
   mlof = lof(split_df$train, k=kth_distance)
   thr = quantile(mlof, threshold)
@@ -634,6 +634,7 @@ run_algorithm_and_print_result <- function(data_df, test_data_name, name_of_algo
 
 Porównanie algorytmów z innymi dla  arrhytmia
 ```{r}
+library(CORElearn)
 name_of_cols = c("test_data_name", "algo", "execution_time","TPR/recall", "TNR", "PPV/precision", "NPV")
 df_compare_algorithm <- data.frame(matrix(ncol = 7, nrow = 0))
 df_compare_algorithm <- setNames(df_compare_algorithm, name_of_cols)
@@ -644,7 +645,7 @@ df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_
 
 df_compare_algorithm
 ```
-```{r message=FALSE, echo=FALSE}
+```{r message=FALSE, echo=FALSE,results='hide',fig.keep='all', eval=FALSE}
 data_to_test <- http_data_df
 split_ind <- sample(seq_len(nrow(data_to_test)), size = 20000)
 data_to_test <- data_to_test[split_ind, ]
@@ -656,7 +657,7 @@ Porównanie algorytmów z innymi dla  http
 
 za duża ilość danych i za mała ilośc outlierów
 
-```{r}
+```{r echo=FALSE,results='hide',fig.keep='all', eval=FALSE}
 name_of_cols = c("test_data_name", "algo", "execution_time","TPR/recall", "TNR", "PPV/precision", "NPV")
 
 
@@ -667,12 +668,22 @@ df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_
 df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_result(data_to_test, "http", RF_algo)
 df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_result(data_to_test, "arrhytmia", IF_algo)
 
+#df_compare_algorithm
+```
+
+
+```{r}
 df_compare_algorithm
-`
 ```
 
 ### **ETAP 4** Wnioski
 
+
+Szybkość działania: 
+
+Zaimplementowaliśmy algorytm lasu izolacyjnego w porównaniu do implementacji w języku R działa wolniej ale efekty uzyskane są porównywalne. 
+
+Nie udało się porównać wyników dla dużych zbiorów danych ze względu na ograniczenia mocy obliczeniowej komputerów którymi dysponujemy. 
 
 
 
