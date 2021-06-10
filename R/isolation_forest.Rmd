@@ -9,9 +9,9 @@ output: html_notebook
 
 ## Struktura katalogów w projekcie przedstawia się nastepująco:
 * **data** - katalog przechowyjący dane wejściowy
-* **info** - katalog przechowujący sprawozdanie porjektu
+* **info** - katalog przechowujący sprawozdanie projektu
 * **src**  - katalog przechowujący kod żrodłowy
-* **isolation_forest.Rmd** - główny plik (notatnik) zawierajcy kod źródłowy
+* **isolation_forest.Rmd** - główny plik (notatnik) zawierajacy uruchomenie kodu oraz opis
 * **isolation_forest.html** - plik wynikowy generowany na podstawie isolation_forest.Rmd
 
 ## Wymagane biblioteki na potrzeby projektu
@@ -37,17 +37,18 @@ library(randomForest)
 library(CORElearn)
 library(Rlof)
 library(dbscan)
-# need for confusedMatrix
-#install.packages('e1071', dependencies=)
+library(grid)
+library(gridExtra)
+library(ROCR)
 
 source("src/IsolationForest.R") 
 ```
 
 ### Przygotowanie danych
 
-* load_mat_data - wczytuje dane z pliku o formacie .mat do tabeli
-* load_data - wczytuje dane z pliku do tabeli (data frame-u) w formacie innych niż *.mat
-* print_mat_data_info - funkcja wypisująca informacja o plikach formatu *.mat. 
+* **load_mat_data** - wczytuje dane z pliku o formacie .mat do tabeli
+* **load_data** - wczytuje dane z pliku do tabeli (data frame-u) w formacie innych niż *.mat
+* **print_mat_data_info** - funkcja wypisująca informacja o plikach formatu *.mat. 
 
 ```{r}
 load_mat_data <- function(path) {
@@ -93,7 +94,9 @@ Dane wzięty ze strony [Outlier Detection DataSets (ODDS)](http://odds.cs.stonyb
 3. http (KDDCUP99) dataset (ODDS) [link](http://odds.cs.stonybrook.edu/http-kddcup99-dataset/)
 4. [Temporary] kddcup.data_10_percent_corrected - Zbiór danych obejmuje szeroką gamę ???włamań??? symulowanych w wojskowym środowisku sieciowym. [link](http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html)
 
-#### Wczytywania danych z pliku arrhythmia.mat:
+
+
+#### Wczytywanie danych z pliku arrhythmia.mat:
 
 **Opis danych.** Dane składają się z dwóch tabel X i Y:
 
@@ -145,26 +148,10 @@ head(creditcard_data_df, 3)
 
 ### Metryki do sprawdzenia wyników
 
-* **split_data_to_train_and_test** - podział zbioru danych na uczący i testowy 
 * **prepare_train_data** - przygotowania zbiora danych z możliwości selekcji okreslonego procentu tych danych.
 * **run_evaluation_metrics** - wyświetelenie macierz błędów (angl. *Confusion matrix*), Recall oraz Precision 
 
 ```{r}
-# [TODO] this function to remove
-split_data_to_train_and_test <- function(df, persent_split) {
-  smp_size <- floor(persent_split * nrow(df))
-  ## ustałiam tą wartość, żeby podział był ten samy za kązdym razem
-  #set.seed(123)
-  set.seed(555)
-  train_ind <- sample(seq_len(nrow(df)), size = smp_size)
-  train <- df[train_ind, ]
-  test <- df[-train_ind, ]
-  train_no_label <- train[,2:ncol(train)]
-  test_no_label <- test[,2:ncol(test)]
-  train_label <- train[,1]
-  return(list(train=train, test=test, train_no_label=train_no_label, test_no_label=test_no_label, train_label=train_label))
-}
-
 prepare_train_data <- function(df, persent_of_data=1.0) {
   set.seed(555)
   smp_size <- floor(persent_of_data * nrow(df))
@@ -194,8 +181,7 @@ run_evaluation_metrics <- function(pred, expected, print_result=TRUE) {
 
 #### Stworzenie sztucznego zbioru danych
 
-```{r eval = FALSE}
-# 
+```{r}
 n = 1000
 Var1 = c(rnorm(n, 0, 0.5), rnorm(n*0.1, -2, 1))
 Var2 = c(rnorm(n, 0, 0.5), rnorm(n*0.1,  2, 1))
@@ -205,7 +191,7 @@ data = data.frame(Var1, Var2)
 
 #### Traning oraz predykcja za pomocą algorytmu Isolation forest na sztucznym zbiorze danych
 
-```{r eval = FALSE}
+```{r}
 iforest <- IsolationForest$new()
 
 num_of_tree = 10
@@ -213,12 +199,11 @@ subsetSize = 100
 
 data$fit <- iforest$fit(data, num_of_tree, subsetSize)
 data$pred <- iforest$predict(data, subsetSize, 0.5)
-data$outlier <- as.factor(ifelse(data$pred >=0.50, "outlier", "normal"))
+data$outlier <- as.factor(ifelse(data$pred >= 0.50, "outlier", "normal"))
 ```
 
-#### Wynik działania algorytmu 
-
-```{r eval = FALSE}
+#### Wynik działania algorytmu:
+```{r message=FALSE}
 ggplot(data, aes(x = Var1, y = Var2, color = outlier)) + 
   geom_point(shape = 1, alpha = 0.5) +
   labs(x = "x", y = "y") +
@@ -226,18 +211,6 @@ ggplot(data, aes(x = Var1, y = Var2, color = outlier)) +
 
 ```
 
-
-[TODO] to remove in future it's just to check 
-```{r include = FALSE}
-#create and plot sample data
-run_isolation_forest <- function(data_df, sub_set_size=256, num_of_trees = 100, anomaly_score = 0.5) {
-  iforest<- isolationForest$new(sample_size=sub_set_size, num_trees=num_of_trees)
-  iforest$fit(data_df$train_no_label)
-  pred <- iforest$predict(data_df$train_no_label)
-  return(ifelse(pred$anomaly_score > anomaly_score, 1, 0))
-}
-
-```
 
 ### **ETAP 2** Sprawdzenie wpływu poszczególnych parametrów na jakość uzyskiwanej izolacji wartości odstających
 
@@ -248,8 +221,19 @@ Parametry:
 * *sub_set_size* - liczba podzbiorza danych używanych dla tworzenia pojedycznego drzewa
 * *num_of_trees* - liczba tworzych drzew w lasu
 
-```{r eval=FALSE}
-run_implemented_isolation_forest <- function(split_df, sub_set_size=256, num_of_trees = 100) {
+```{r include=FALSE, message=FALSE}
+#create and plot sample data
+run_isolation_forest <- function(data_df, sub_set_size=256, num_of_trees = 100, anomaly_score = 0.5) {
+  iforest<- isolationForest$new(sample_size=sub_set_size, num_trees=num_of_trees)
+  iforest$fit(data_df$train_no_label)
+  pred <- iforest$predict(data_df$train_no_label)
+  return(ifelse(pred$anomaly_score > anomaly_score, 1, 0))
+}
+
+```
+
+```{r}
+run_isolaton_forest <- function(split_df, sub_set_size=256, num_of_trees = 100) {
   iforest <- IsolationForest$new()
   fit <- iforest$fit(split_df$train_no_label, num_of_tree, sub_set_size)
   pred <- iforest$predict(split_df$train_no_label, sub_set_size, 0.5)
@@ -258,7 +242,7 @@ run_implemented_isolation_forest <- function(split_df, sub_set_size=256, num_of_
 }
 ```
 
-**run_if_with_param** - uruchomienie oraz zbieranie metryk algorytmu:
+**run_if_with_param** - uruchomienie oraz zbieranie metryk algorytmu zwracajaca danna informację:
 
 * sensitivity, recall albo true positive rate (TPR)
 * specificity albo true negative rate (TNR)
@@ -353,7 +337,7 @@ metric_for_sub_set_size <- function(test_data_name, data_df, sub_sets_size_list,
               y = y_title
             ) +
           theme(legend.position="top")
-  return(list(metrics=df_tree_nums_metrics, plot=plot))
+  return(list(metrics=df_sub_set_metrics, plot=plot))
 }
 
 run_all_combination <- function(data_df, sub_sets_size_list, set_of_tree_nums) {
@@ -361,8 +345,10 @@ run_all_combination <- function(data_df, sub_sets_size_list, set_of_tree_nums) {
   df_sub_set_and_tree_num_metrics <- setNames(df_sub_set_and_tree_num_metrics, name_of_cols)
   
   for(sub_set_size in sub_sets_size_list) {
+    print(sub_set_size)
     for(tree_num in set_of_tree_nums) {
-      df_sub_set_and_tree_num_metrics[nrow(df_sub_set_and_tree_num_metrics) + 1,] = run_if_with_param(test_data_name, data_df, sub_set_size, tree_num)
+      print(tree_num)
+      df_sub_set_and_tree_num_metrics[nrow(df_sub_set_and_tree_num_metrics) + 1,] = run_if_with_param("test_data_name", data_df, sub_set_size, tree_num)
     }
   }
   
@@ -370,8 +356,9 @@ run_all_combination <- function(data_df, sub_sets_size_list, set_of_tree_nums) {
 }
 ```
 
+#### Sprawdzenie dla zbioru danych z pliku *arrhytmia*
 
-```{r echo=FALSE, message=FALSE, results='hide'}
+```{r echo=FALSE, results='hide'}
 name_of_data <- "arrhytmia"
 data_to_test <- arrhythmia_data_df
 
@@ -391,16 +378,14 @@ result_metrics_sub_set_size <- metric_for_sub_set_size(name_of_data,
                                                        x_title="Liczba danych dla tworzenia jednego drzewa",
                                                        y_title="Procent [%]")
 
-run_all_combination(data_to_test, set_of_tree_nums, sub_sets_size_list)
+df_sub_set_and_tree_num_metrics <- run_all_combination(data_to_test, set_of_tree_nums, sub_sets_size_list)
 ```
 
 Wykres po lewej stronie przedstawia wpływ wartości oznaczająca liczba tworzynych drzew w lasie izolaczynjnym na wyniki działania algorytmu. Jako wyniki podane dane z **confision matrix**.
 
 Wykres po prawej przedstawia wpływ wartości oznaczająca liczba zbiora danych z którego tworzone poszczególne drzewa w lasie izolaczynjnym na wyniki działania algorytmu. Jako wyniki podane dane z *confision matrix*.
 
-```{r}
-library(grid)
-library(gridExtra)
+```{r message=FALSE}
 grid.arrange(result_metrics_num_of_tree$plot, result_metrics_sub_set_size$plot, ncol = 2, widths=c(2,2))
 ```
 
@@ -412,7 +397,6 @@ df_sub_set_and_tree_num_metrics_ppv <- df_sub_set_and_tree_num_metrics[order(df_
 df_show <- df_sub_set_and_tree_num_metrics_ppv[1:5, ]
 df_show<- subset(df_show, select=c("sub_set_size", "num_of_trees", "PPV"))
 knitr::kable(df_show, align = "lccrr")
-
 ```
 
 Poszukiwanie najlepszej konfiguracji parametrów według **recall**:
@@ -424,10 +408,109 @@ df_show <- subset(df_show, select=c("sub_set_size", "num_of_trees", "TPR"))
 knitr::kable(df_show, align = "lccrr")
 ```
 
-```{r}
+#### Sprawdzenie dla zbioru danych z pliku *http.mat*
 
+```{r}
+data_to_test
 ```
 
+
+```{r, echo=FALSE, message=FALSE}
+name_of_data <- "http"
+data_to_test <- http_data_df
+split_ind <- sample(seq_len(nrow(data_to_test)), size = 60000)
+data_to_test <- data_to_test[split_ind, ]
+
+set_of_tree_nums <- list(10, 50, 100, 150, 200)
+result_metrics_num_of_tree <- metric_for_num_of_tree(name_of_data,
+                                                     data_to_test,
+                                                     set_of_tree_nums,
+                                                     title="",
+                                                     x_title="Liczba tworzonych drzew w isolation forest",
+                                                     y_title="Procent [%]")
+
+sub_sets_size_list <- list(100, 256, 500, 1000)
+result_metrics_sub_set_size <- metric_for_sub_set_size(name_of_data,
+                                                       data_to_test,
+                                                       sub_sets_size_list,
+                                                       title="",
+                                                       x_title="Liczba danych dla tworzenia jednego drzewa",
+                                                       y_title="Procent [%]")
+
+df_sub_set_and_tree_num_metrics <- run_all_combination(data_to_test, set_of_tree_nums, sub_sets_size_list)
+
+print(result_metrics_num_of_tree$plot)
+print(result_metrics_sub_set_size$plot)
+```
+
+Poszukiwanie najlepszej konfiguracji parametrów według **precision**:
+
+```{r, echo=FALSE, message=FALSE}
+df_sub_set_and_tree_num_metrics_ppv <- df_sub_set_and_tree_num_metrics[order(df_sub_set_and_tree_num_metrics$PPV, decreasing = TRUE),]
+df_show <- df_sub_set_and_tree_num_metrics_ppv[1:5, ]
+df_show<- subset(df_show, select=c("sub_set_size", "num_of_trees", "PPV"))
+knitr::kable(df_show, align = "lccrr")
+```
+
+Poszukiwanie najlepszej konfiguracji parametrów według **recall**:
+
+```{r, echo=FALSE, message=FALSE}
+df_sub_set_and_tree_num_metrics_tpr <- df_sub_set_and_tree_num_metrics[order(df_sub_set_and_tree_num_metrics$TPR, decreasing = TRUE),]
+df_show <- df_sub_set_and_tree_num_metrics_tpr[1:5, ]
+df_show <- subset(df_show, select=c("sub_set_size", "num_of_trees", "TPR"))
+knitr::kable(df_show, align = "lccrr")
+```
+
+
+#### Sprawdzenie dla zbioru danych z pliku *creditcard_data_df.csv*
+
+nie udało się ze względu małej liczby mocy obliczeniowej lokalnej maszyny
+```{r, eval=false, echo=FALSE, message=FALSE}
+# nie dało się za bardzo dużo faktorów oraz danych
+
+name_of_data <- "http"
+data_to_test <- creditcard_data_df
+split_ind <- sample(seq_len(nrow(data_to_test)), size = 30000)
+data_to_test <- data_to_test[split_ind, ]
+
+set_of_tree_nums <- list(10, 50, 100, 150, 200, 250)
+result_metrics_num_of_tree <- metric_for_num_of_tree(name_of_data,
+                                                     data_to_test,
+                                                     set_of_tree_nums,
+                                                     title="",
+                                                     x_title="Liczba tworzonych drzew w isolation forest",
+                                                     y_title="Procent [%]")
+
+sub_sets_size_list <- prepare_sub_set_size_list(nrow(data_to_test))
+result_metrics_sub_set_size <- metric_for_sub_set_size(name_of_data,
+                                                       data_to_test,
+                                                       sub_sets_size_list,
+                                                       title="",
+                                                       x_title="Liczba danych dla tworzenia jednego drzewa",
+                                                       y_title="Procent [%]")
+
+df_sub_set_and_tree_num_metrics <- run_all_combination(data_to_test, set_of_tree_nums, sub_sets_size_list)
+
+grid.arrange(result_metrics_num_of_tree$plot, result_metrics_sub_set_size$plot, ncol = 2, widths=c(2,2))
+```
+
+Poszukiwanie najlepszej konfiguracji parametrów według **precision**:
+
+```{r, eval=false, echo=FALSE, message=FALSE}
+df_sub_set_and_tree_num_metrics_ppv <- df_sub_set_and_tree_num_metrics[order(df_sub_set_and_tree_num_metrics$PPV, decreasing = TRUE),]
+df_show <- df_sub_set_and_tree_num_metrics_ppv[1:5, ]
+df_show<- subset(df_show, select=c("sub_set_size", "num_of_trees", "PPV"))
+knitr::kable(df_show, align = "lccrr")
+```
+
+Poszukiwanie najlepszej konfiguracji parametrów według **recall**:
+
+```{r, eval=false, echo=FALSE, message=FALSE}
+df_sub_set_and_tree_num_metrics_tpr <- df_sub_set_and_tree_num_metrics[order(df_sub_set_and_tree_num_metrics$TPR, decreasing = TRUE),]
+df_show <- df_sub_set_and_tree_num_metrics_tpr[1:5, ]
+df_show <- subset(df_show, select=c("sub_set_size", "num_of_trees", "TPR"))
+knitr::kable(df_show, align = "lccrr")
+```
 
 ### **ETAP 3** Badanie działania algorytmu z innymi dostępnymi w języku R metodami detekcji wartości odstających, takich jak:
 
@@ -440,10 +523,19 @@ knitr::kable(df_show, align = "lccrr")
 
 ```{r}
 run_knn <- function(split_df, k=10) {
-  train <- split_df$train
-  test <- split_df$test
+  # Stara implementacja
+  #train <- split_df$train
+  #test <- split_df$test
+  #return(knn(train=split_df$train_no_label, test=split_df$test_no_label, cl=split_df$train_label, k=k))
   
-  return(knn(train=split_df$train_no_label, test=split_df$test_no_label, cl=split_df$train_label, k=k))
+  md <- CoreModel(label ~ ., split_df$train, model="knn")
+  
+  outliers<- rfOutliers(md, split_df$train)
+  pred_df <- data.frame(pred=abs(outliers))
+  pred_df$pred[pred_df$pred <  2] <- 0
+  pred_df$pred[pred_df$pred >= 2] <- 1
+  
+  return(pred_df$pred)
 }
 ```
 
@@ -466,7 +558,6 @@ run_one_class_svm <- function(split_df) {
 ```
 
 #### 3. Lokalny współczynnik wyjątkowości
-[Todo] Można zajrzeć do tego linku https://www.datatechnotes.com/2017/12/outlier-detection-with-local-outlier.html i zrobić to samo
 
 ```{r}
 run_lof <- function(split_df, kth_distance=10, threshold=0.9) {
@@ -492,7 +583,7 @@ run_random_forest <- function(split_df) {
   md <- CoreModel(label ~ ., split_df$train, model="rf", rfNoTrees=30, 
                 maxThreads=1)
   
-  outliers<- rfOutliers(md, split_train_test_df$train)
+  outliers<- rfOutliers(md, split_df$train)
   pred_df <- data.frame(pred=abs(outliers))
   pred_df$pred[pred_df$pred <  2] <- 0
   pred_df$pred[pred_df$pred >= 2] <- 1
@@ -500,7 +591,6 @@ run_random_forest <- function(split_df) {
   return(pred_df$pred)
 }
 ```
-## 
 
 *run_algorithm_and_print_result* - funkcja uruchamiająca wybrany algorytm o wybranych parametrach:
 
@@ -515,19 +605,11 @@ LOF_algo = "LOF"
 RF_algo = "Random Forest"
 IF_algo = "Isolation Forest"
 
-run_algorithm_and_print_result <- function(data_df, test_data_name, name_of_algo, split_factor=0.8) {
+run_algorithm_and_print_result <- function(data_df, test_data_name, name_of_algo, split_factor=1) {
   start.time <- Sys.time()
-  split_train_test_df <- split_data_to_train_and_test(data_df, 0.8)
+  split_train_test_df <- split_data_to_train_and_test(data_df, split_factor)
   
-  expected = switch(
-    name_of_algo,
-    "Isolation Forest"=factor(split_train_test_df$train_label)
-    )
-  
-  if (is.null(expected)) {
-    expected <- factor(split_train_test_df$test[,1])
-  }
-  
+  expected = factor(split_train_test_df$train_label)
   pred = switch(
     name_of_algo,
     "KNN" = factor(run_knn(split_train_test_df)),
@@ -539,122 +621,58 @@ run_algorithm_and_print_result <- function(data_df, test_data_name, name_of_algo
   end.time <- Sys.time()
   time.taken <- round(end.time - start.time, 4)
   result_eval = run_evaluation_metrics(pred, expected)
-  print("i 'm here")
-  return(c(test_data_name, name_of_algo, time.taken, result_eval$precision, result_eval$recall, result_eval$accuracy))
+  
+  TPR <- round(result_eval$conf$byClass[[1]], 2)
+  TNR <- round(result_eval$conf$byClass[[2]], 2)
+  PPV <- round(result_eval$conf$byClass[[3]], 2)
+  NPV <- round(result_eval$conf$byClass[[4]], 2)
+  
+  return(c(test_data_name, name_of_algo, time.taken, TPR, TNR, PPV, NPV))
 }
 
 ```
 
-
-### **ETAP 4** Ocena działania algorytmu
-
-### [TODO] Dany rozdział do usunięcia:
-
+Porównanie algorytmów z innymi dla  arrhytmia
 ```{r}
-test_satellite_data_df <- mat_to_df("data/temporary/satellite.mat")
-test_cover_data_df <- mat_to_df("data/temporary/cover.mat")
-test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
+name_of_cols = c("test_data_name", "algo", "execution_time","TPR/recall", "TNR", "PPV/precision", "NPV")
+df_compare_algorithm <- data.frame(matrix(ncol = 7, nrow = 0))
+df_compare_algorithm <- setNames(df_compare_algorithm, name_of_cols)
+
+df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_result(arrhythmia_data_df, "arrhytmia", RF_algo)
+df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_result(arrhythmia_data_df, "arrhytmia", LOF_algo)
+df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_result(arrhythmia_data_df, "arrhytmia", IF_algo)
+
+df_compare_algorithm
 ```
-
-```{r}
-# Zbieramy tutaj dane
-name_of_cols = c("test_data_name", "algo", "execution_time","precision", "recall", "accuracy")
-df_with_metrics <- data.frame(matrix(ncol = 6, nrow = 0))
-df_with_metrics <- setNames(df_with_metrics, name_of_cols)
-
-run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo)
-
-```
-
-Test czasu
-
-```{r}
-range = 4
-df_with_metrics <- data.frame(matrix(ncol = 6, nrow = 0))
-df_with_metrics <- setNames(df_with_metrics, name_of_cols)
-
-for(i in 1:range) {
-  df_with_metrics[nrow(df_with_metrics) + 1,] = run_algorithm_and_print_result(test_mnist_data_df, "mnist", IF_algo)
-
-}
-df_with_metrics
-```
-```{r}
-test_mnist_data_df <- mat_to_df("data/temporary/mnist.mat")
-
-split_train_test_df <- split_data_to_train_and_test(test_mnist_data_df, 0.8)
-pred_1 <- factor(run_lof(split_train_test_df))
-expcected_1 <- factor(split_train_test_df$train_label)
-run_evaluation_metrics(pred_1, expcected_1)
-
-pred_2 <- factor(run_isolation_forest(split_train_test_df))
-expcected_2 <- factor(split_train_test_df$train_label)
-run_evaluation_metrics(pred_2, expcected_2)
+```{r message=FALSE, echo=FALSE}
+data_to_test <- http_data_df
+split_ind <- sample(seq_len(nrow(data_to_test)), size = 20000)
+data_to_test <- data_to_test[split_ind, ]
 
 ```
 
 
-```{r}
-library(ROCR)
-pred_plot <- prediction(c(pred_1), c(expcected_1))
-pred_plot_2 <- prediction(c(pred_2), c(expcected_2))
-perf <- performance(pred_plot, "tpr", "fpr" )
-perf2 <- performance(pred_plot_2, "tpr", "fpr")
-plot(perf, col="blue")
-plot(perf2, add = TRUE, col="red")
-legend("topleft",c("sin(x)","cos(x)"),fill=c("blue","red"))
-abline(0,1)
+Porównanie algorytmów z innymi dla  http
 
-```
+za duża ilość danych i za mała ilośc outlierów
 
 ```{r}
-pred_plot
+name_of_cols = c("test_data_name", "algo", "execution_time","TPR/recall", "TNR", "PPV/precision", "NPV")
+
+
+df_compare_algorithm <- data.frame(matrix(ncol = 7, nrow = 0))
+df_compare_algorithm <- setNames(df_compare_algorithm, name_of_cols)
+
+df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_result(data_to_test, "http", LOF_algo)
+df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_result(data_to_test, "http", RF_algo)
+df_compare_algorithm[nrow(df_compare_algorithm) + 1,] = run_algorithm_and_print_result(data_to_test, "arrhytmia", IF_algo)
+
+df_compare_algorithm
+`
 ```
 
+### **ETAP 4** Wnioski
 
-```{r}
-library(caret)
-library("plotROC")
-# Train and evaluate
-
-# Evaluation
-run_evaluation_metrics(pred, expected)
-
-# finish Train and evaluate
-
-roc.estimate <- calculate_roc(pred, expected)
-single.rocplot <- ggroc(roc.estimate)
-plot_journal_roc(single.rocplot)
-
-
-```
-# Just for tests! [TO remove]
-
-```{r}
-mlof = lof(split_train_test_df$train, k=10)
-head(mlof)
-quantile(mlof)
-quantile(mlof, .90)
-
-#abline(0,1)
-```
-```{r}
-filename <- paste("name_file", ".mat", sep = "")
-filename
-```
-
-```{r}
-pred_df <- data.frame(pred=mlof)
-thr = quantile(mlof, .90)
-factor <- thr
-pred_df$pred[pred_df$pred < factor] <- 0
-pred_df$pred[pred_df$pred >= factor] <- 1
-
-pred_1 <- factor(pred_df$pred)
-expcected_1 <- factor(split_train_test_df$train_label)
-run_evaluation_metrics(pred_1, expcected_1)
-
-```
 
 
 
